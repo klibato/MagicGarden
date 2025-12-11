@@ -27,7 +27,6 @@ input_datetime:
     name: "Date de germination"
     has_date: true
     has_time: false
-    initial: "2024-11-30"
 
 input_number:
   # Seuils d'humidité du sol par phase
@@ -305,15 +304,23 @@ template:
           {% else %}
             Optimal
           {% endif %}
-        icon: >
-          {% set status = this.state %}
-          {% if 'critique' in status %}
-            mdi:alert-circle
-          {% elif 'Attention' in status or 'élevée' in status %}
-            mdi:alert
-          {% else %}
-            mdi:check-circle
-          {% endif %}
+        icon: mdi:heart-pulse
+        attributes:
+          icon_dynamic: >
+            {% set temp = states('sensor.capteur_4en1_temperature') | float(0) %}
+            {% set soil = states('sensor.capteur_4en1_humidite_sol') | float(0) %}
+            {% set air = states('sensor.capteur_4en1_humidite_air') | float(0) %}
+            {% set temp_min = states('input_number.temperature_min') | float %}
+            {% set temp_max = states('input_number.temperature_max') | float %}
+            {% set air_max = states('input_number.air_humidity_max') | float %}
+            {% set soil_crit = states('input_number.soil_humidity_critical') | float %}
+            {% if temp < temp_min or temp > temp_max %}
+              mdi:alert-circle
+            {% elif air > air_max or soil < soil_crit or soil < 30 %}
+              mdi:alert
+            {% else %}
+              mdi:check-circle
+            {% endif %}
 
       # VPD (Vapor Pressure Deficit) - simplifié
       - name: "VPD"
