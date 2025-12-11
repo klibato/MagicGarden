@@ -87,38 +87,38 @@ input_number:
 
   watering_duration_plantule:
     name: "Durée arrosage - Plantule"
-    min: 30
+    min: 10
     max: 300
-    step: 10
+    step: 5
     unit_of_measurement: "s"
-    initial: 60
+    initial: 45
     icon: mdi:timer
 
   watering_duration_vegetation:
     name: "Durée arrosage - Végétation"
-    min: 120
+    min: 60
     max: 600
-    step: 30
+    step: 15
     unit_of_measurement: "s"
-    initial: 420
+    initial: 225
     icon: mdi:timer
 
   watering_duration_floraison:
     name: "Durée arrosage - Floraison"
-    min: 300
-    max: 1800
-    step: 60
+    min: 120
+    max: 1200
+    step: 30
     unit_of_measurement: "s"
-    initial: 1020
+    initial: 450
     icon: mdi:timer
 
   watering_duration_rincage:
     name: "Durée arrosage - Rinçage"
-    min: 600
-    max: 2400
-    step: 60
+    min: 240
+    max: 1800
+    step: 30
     unit_of_measurement: "s"
-    initial: 1200
+    initial: 900
     icon: mdi:timer
 
   # Seuils de température
@@ -160,14 +160,14 @@ input_number:
     initial: 20
     icon: mdi:water-alert
 
-  # Débit des goutteurs (ml/min)
+  # Débit des goutteurs (ml/min par goutteur)
   dripper_flow_rate:
-    name: "Débit goutteurs"
-    min: 50
-    max: 300
-    step: 10
+    name: "Débit par goutteur (4x)"
+    min: 10
+    max: 100
+    step: 5
     unit_of_measurement: "ml/min"
-    initial: 100
+    initial: 33
     icon: mdi:water-pump
 
 input_text:

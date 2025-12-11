@@ -1,215 +1,695 @@
 # ============================================================================
-# MAGIC GARDEN - Dashboard Lovelace
+# MAGIC GARDEN - Dashboard Lovelace PREMIUM
 # ============================================================================
-# Interface complète pour monitoring et contrôle de la culture
-# À ajouter comme nouveau dashboard dans Home Assistant
-# ============================================================================
-# INSTRUCTIONS:
-# 1. Configuration > Dashboards > + Add Dashboard
-# 2. Nom: "Magic Garden 🌱"
-# 3. Cliquer sur les 3 points > Raw configuration editor
-# 4. Coller ce contenu et sauvegarder
+# Interface ultra-moderne pour monitoring et contrôle de la culture
 # ============================================================================
 
 title: Magic Garden 🌱
+theme: default
 views:
 
   # ==========================================================================
-  # VUE 1: MONITORING
+  # VUE 1: OVERVIEW - Vue d'ensemble
   # ==========================================================================
-  - title: Monitoring
-    path: monitoring
-    icon: mdi:monitor-dashboard
+  - title: Overview
+    path: overview
+    icon: mdi:view-dashboard
     badges: []
     cards:
 
-      # En-tête avec infos principales
+      # Header avec infos principales
+      - type: custom:mushroom-template-card
+        primary: "🌱 Watermelon x OG Kush Auto"
+        secondary: |
+          Jour {{ states('sensor.jour_de_culture') }} • Semaine {{ states('sensor.semaine_de_culture') }}
+          {{ states('input_select.grow_phase') }}
+        icon: mdi:cannabis
+        icon_color: |
+          {% if is_state('sensor.etat_sante_plante', 'Optimal') %}
+            green
+          {% elif 'Attention' in states('sensor.etat_sante_plante') %}
+            orange
+          {% else %}
+            red
+          {% endif %}
+        badge_icon: |
+          {% if is_state('binary_sensor.besoin_arrosage', 'on') %}
+            mdi:water-alert
+          {% else %}
+            mdi:check-circle
+          {% endif %}
+        badge_color: |
+          {% if is_state('binary_sensor.besoin_arrosage', 'on') %}
+            orange
+          {% else %}
+            green
+          {% endif %}
+        tap_action:
+          action: none
+        hold_action:
+          action: none
+        layout: horizontal
+        fill_container: false
+
+      # Conditions environnementales - Cartes gauges modernes
+      - type: horizontal-stack
+        cards:
+          # Température
+          - type: gauge
+            entity: sensor.capteur_4en1_temperature
+            name: Température
+            unit: "°C"
+            min: 10
+            max: 35
+            severity:
+              green: 18
+              yellow: 16
+              red: 0
+            segments:
+              - from: 0
+                color: "#3498db"
+              - from: 16
+                color: "#2ecc71"
+              - from: 22
+                color: "#27ae60"
+              - from: 26
+                color: "#f39c12"
+              - from: 30
+                color: "#e74c3c"
+
+          # Humidité air
+          - type: gauge
+            entity: sensor.capteur_4en1_humidite_air
+            name: Humidité Air
+            unit: "%"
+            min: 0
+            max: 100
+            severity:
+              green: 35
+              yellow: 60
+              red: 65
+            segments:
+              - from: 0
+                color: "#e74c3c"
+              - from: 35
+                color: "#2ecc71"
+              - from: 45
+                color: "#27ae60"
+              - from: 55
+                color: "#f39c12"
+              - from: 65
+                color: "#e74c3c"
+
+          # Humidité sol
+          - type: gauge
+            entity: sensor.capteur_4en1_humidite_sol
+            name: Humidité Sol
+            unit: "%"
+            min: 0
+            max: 100
+            needle: true
+            segments:
+              - from: 0
+                color: "#e74c3c"
+              - from: 20
+                color: "#f39c12"
+              - from: 30
+                color: "#2ecc71"
+              - from: 70
+                color: "#3498db"
+              - from: 80
+                color: "#e74c3c"
+
+      # Cartes capteurs avec barres de progression
       - type: vertical-stack
         cards:
-          - type: markdown
-            content: |
-              # 🌱 WATERMELON X OG KUSH AUTO
-              **Jour {{ states('sensor.jour_de_culture') }} - Semaine {{ states('sensor.semaine_de_culture') }}**
-
-              Phase: **{{ states('input_select.grow_phase') }}** | Santé: **{{ states('sensor.etat_sante_plante') }}**
-
-          - type: entities
-            title: 📊 Conditions en temps réel
-            show_header_toggle: false
+          - type: custom:bar-card
             entities:
               - entity: sensor.capteur_4en1_temperature
                 name: Température
                 icon: mdi:thermometer
+                unit_of_measurement: "°C"
+                min: 10
+                max: 35
+                target: 23
+                severity:
+                  - color: "#3498db"
+                    from: 10
+                    to: 16
+                  - color: "#2ecc71"
+                    from: 16
+                    to: 26
+                  - color: "#f39c12"
+                    from: 26
+                    to: 30
+                  - color: "#e74c3c"
+                    from: 30
+                    to: 35
               - entity: sensor.capteur_4en1_humidite_air
-                name: Humidité air
+                name: Humidité Air
                 icon: mdi:water-percent
+                unit_of_measurement: "%"
+                min: 0
+                max: 100
+                target: 50
+                severity:
+                  - color: "#e74c3c"
+                    from: 0
+                    to: 35
+                  - color: "#2ecc71"
+                    from: 35
+                    to: 60
+                  - color: "#f39c12"
+                    from: 60
+                    to: 70
+                  - color: "#e74c3c"
+                    from: 70
+                    to: 100
               - entity: sensor.capteur_4en1_humidite_sol
-                name: Humidité sol
+                name: Humidité Sol
                 icon: mdi:water
-              - entity: sensor.capteur_4en1_luminosite
-                name: Luminosité
-                icon: mdi:brightness-6
-              - entity: sensor.vpd
-                name: VPD (Vapor Pressure Deficit)
-                icon: mdi:cloud-percent
-              - type: divider
-              - entity: sensor.etat_sante_plante
-                name: État de santé
-                icon: mdi:heart-pulse
-              - entity: binary_sensor.besoin_arrosage
-                name: Besoin d'arrosage
+                unit_of_measurement: "%"
+                min: 0
+                max: 100
+                target: sensor.seuil_humidite_actif
+                severity:
+                  - color: "#e74c3c"
+                    from: 0
+                    to: 20
+                  - color: "#f39c12"
+                    from: 20
+                    to: 30
+                  - color: "#2ecc71"
+                    from: 30
+                    to: 70
+                  - color: "#3498db"
+                    from: 70
+                    to: 100
+            height: 40px
+            width: 70%
+            positions:
+              icon: outside
+              indicator: inside
+              name: inside
+            style: |-
+              bar-card-currentbar, bar-card-targetbar {
+                border-radius: 12px;
+              }
 
-      # Graphiques température
-      - type: vertical-stack
+      # VPD et Luminosité
+      - type: horizontal-stack
         cards:
-          - type: history-graph
-            title: 🌡️ Température (24h)
+          - type: sensor
+            entity: sensor.vpd
+            name: VPD
+            icon: mdi:cloud-percent
+            graph: line
+            detail: 2
             hours_to_show: 24
-            refresh_interval: 60
-            entities:
-              - entity: sensor.capteur_4en1_temperature
-                name: Température
+            theme: default
 
-          - type: markdown
-            content: |
-              **Plages optimales par phase:**
-              - 🌱 Germination/Plantule: 22-26°C jour / 18-20°C nuit
-              - 🌿 Végétation: 23-25°C jour / 18-22°C nuit
-              - 🌸 Floraison: 25°C jour / 18-20°C nuit
-              - 💧 Rinçage: 25°C jour / 18-20°C nuit
-
-      # Graphiques humidité air
-      - type: vertical-stack
-        cards:
-          - type: history-graph
-            title: 💧 Humidité air (24h)
+          - type: sensor
+            entity: sensor.capteur_4en1_luminosite
+            name: Luminosité
+            icon: mdi:brightness-6
+            graph: line
+            detail: 2
             hours_to_show: 24
-            refresh_interval: 60
-            entities:
-              - entity: sensor.capteur_4en1_humidite_air
-                name: Humidité air
 
-          - type: markdown
-            content: |
-              **Plages optimales par phase:**
-              - 🌱 Germination: 70-80%
-              - 🌿 Plantule: 55-65%
-              - 🌿 Végétation: 45-55%
-              - 🌸 **Floraison: 38-45% MAX** (moisissure!)
-              - 💧 Rinçage: 35-40%
+      # État de santé et besoin d'arrosage
+      - type: glance
+        entities:
+          - entity: sensor.etat_sante_plante
+            name: État de santé
+          - entity: binary_sensor.besoin_arrosage
+            name: Besoin arrosage
+          - entity: sensor.seuil_humidite_actif
+            name: Seuil actif
+          - entity: counter.watering_count
+            name: Arrosages total
+        show_state: true
+        columns: 4
 
-      # Graphiques humidité sol
-      - type: vertical-stack
-        cards:
-          - type: history-graph
-            title: 🏜️ Humidité sol (7 jours)
-            hours_to_show: 168
-            refresh_interval: 300
-            entities:
-              - entity: sensor.capteur_4en1_humidite_sol
-                name: Humidité sol
-              - entity: sensor.seuil_humidite_actif
-                name: Seuil actif
+      # Graphique température 24h
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: "🌡️ Température (24h)"
+          show_states: true
+        graph_span: 24h
+        span:
+          start: day
+        yaxis:
+          - id: temp
+            min: 10
+            max: 35
+            apex_config:
+              tickAmount: 5
+        series:
+          - entity: sensor.capteur_4en1_temperature
+            name: Température
+            stroke_width: 3
+            type: area
+            color: "#e74c3c"
+            opacity: 0.3
+            yaxis_id: temp
+        annotations:
+          yaxis:
+            - y: 16
+              borderColor: "#3498db"
+              strokeDashArray: 3
+              label:
+                text: "Min"
+                style:
+                  background: "#3498db"
+            - y: 30
+              borderColor: "#e74c3c"
+              strokeDashArray: 3
+              label:
+                text: "Max"
+                style:
+                  background: "#e74c3c"
 
-          - type: markdown
-            content: |
-              **Seuils d'arrosage par phase:**
-              - 🌱 Germination: 75% (substrat humide constant)
-              - 🌿 Plantule: 70%
-              - 🌿 Végétation: 50%
-              - 🌸 Floraison: 40%
-              - 💧 Rinçage: 55%
+      # Graphique humidité air + sol
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: "💧 Humidité Air & Sol (24h)"
+          show_states: true
+        graph_span: 24h
+        yaxis:
+          - id: humidity
+            min: 0
+            max: 100
+            apex_config:
+              tickAmount: 5
+        series:
+          - entity: sensor.capteur_4en1_humidite_air
+            name: Humidité Air
+            stroke_width: 3
+            type: line
+            color: "#3498db"
+            yaxis_id: humidity
+          - entity: sensor.capteur_4en1_humidite_sol
+            name: Humidité Sol
+            stroke_width: 3
+            type: line
+            color: "#27ae60"
+            yaxis_id: humidity
+          - entity: sensor.seuil_humidite_actif
+            name: Seuil actif
+            stroke_width: 2
+            type: line
+            color: "#f39c12"
+            yaxis_id: humidity
+            curve: stepline
+        annotations:
+          yaxis:
+            - y: 60
+              borderColor: "#e74c3c"
+              strokeDashArray: 5
+              label:
+                text: "Max Air"
+                style:
+                  background: "#e74c3c"
+
+      # Contrôles rapides
+      - type: entities
+        title: ⚡ Contrôles rapides
+        show_header_toggle: false
+        entities:
+          - entity: switch.prise_mars_hydro
+            name: Mars Hydro TS-1000
+            icon: mdi:lightbulb-on
+            secondary_info: last-changed
+          - entity: switch.prise_extraction
+            name: Extracteur + Filtre
+            icon: mdi:fan
+            secondary_info: last-changed
+          - entity: switch.smart_drip_irrigation
+            name: Pompe irrigation
+            icon: mdi:water-pump
+            secondary_info: last-changed
+          - type: divider
+          - entity: input_boolean.auto_watering_enabled
+            name: Arrosage automatique
+            icon: mdi:water-sync
+          - entity: input_boolean.alerts_enabled
+            name: Alertes activées
+            icon: mdi:bell-ring
+
+  # ==========================================================================
+  # VUE 2: MONITORING DÉTAILLÉ
+  # ==========================================================================
+  - title: Monitoring
+    path: monitoring
+    icon: mdi:chart-line
+    badges:
+      - entity: sensor.jour_de_culture
+      - entity: sensor.semaine_de_culture
+      - entity: input_select.grow_phase
+      - entity: sensor.etat_sante_plante
+    cards:
+
+      # Graphique température 7 jours
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.capteur_4en1_temperature
+            name: Température
+            color: "#e74c3c"
+        name: 🌡️ Température (7 jours)
+        hours_to_show: 168
+        points_per_hour: 2
+        line_width: 3
+        font_size: 75
+        animate: true
+        show:
+          extrema: true
+          average: true
+          fill: fade
+        upper_bound: 35
+        lower_bound: 10
+        color_thresholds:
+          - value: 10
+            color: "#3498db"
+          - value: 16
+            color: "#2ecc71"
+          - value: 26
+            color: "#f39c12"
+          - value: 30
+            color: "#e74c3c"
+
+      # Plages optimales température
+      - type: markdown
+        content: |
+          ### 🌡️ Plages optimales température
+
+          | Phase | Jour | Nuit |
+          |-------|------|------|
+          | 🌱 Germination | 22-26°C | 18-20°C |
+          | 🌿 Plantule | 22-25°C | 18-20°C |
+          | 🌿 Végétation | 23-25°C | 18-22°C |
+          | 🌸 Floraison | 25°C | 18-20°C |
+          | 💧 Rinçage | 25°C | 18-20°C |
+
+      # Graphique humidité air 7 jours
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.capteur_4en1_humidite_air
+            name: Humidité Air
+            color: "#3498db"
+        name: 💧 Humidité Air (7 jours)
+        hours_to_show: 168
+        points_per_hour: 2
+        line_width: 3
+        font_size: 75
+        animate: true
+        show:
+          extrema: true
+          average: true
+          fill: fade
+        upper_bound: 100
+        lower_bound: 0
+        color_thresholds:
+          - value: 0
+            color: "#e74c3c"
+          - value: 35
+            color: "#2ecc71"
+          - value: 60
+            color: "#f39c12"
+          - value: 70
+            color: "#e74c3c"
+
+      # Plages optimales humidité air
+      - type: markdown
+        content: |
+          ### 💧 Plages optimales humidité air
+
+          | Phase | Humidité |
+          |-------|----------|
+          | 🌱 Germination | 70-80% |
+          | 🌿 Plantule | 55-65% |
+          | 🌿 Végétation | 45-55% |
+          | 🌸 **Floraison** | **38-45% MAX** ⚠️ |
+          | 💧 Rinçage | 35-40% |
+
+          ⚠️ **En floraison : MAX 45% sinon risque de moisissure!**
+
+      # Graphique humidité sol + seuil
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.capteur_4en1_humidite_sol
+            name: Humidité Sol
+            color: "#27ae60"
+          - entity: sensor.seuil_humidite_actif
+            name: Seuil actif
+            color: "#f39c12"
+            show_line: true
+            show_points: false
+            show_legend: true
+        name: 🏜️ Humidité Sol vs Seuil (7 jours)
+        hours_to_show: 168
+        points_per_hour: 1
+        line_width: 3
+        font_size: 75
+        animate: true
+        show:
+          extrema: true
+          average: true
+          fill: fade
+        upper_bound: 100
+        lower_bound: 0
+        color_thresholds:
+          - value: 0
+            color: "#e74c3c"
+          - value: 20
+            color: "#f39c12"
+          - value: 30
+            color: "#2ecc71"
+
+      # Seuils humidité sol
+      - type: markdown
+        content: |
+          ### 🏜️ Seuils d'arrosage par phase
+
+          | Phase | Seuil | Volume |
+          |-------|-------|--------|
+          | 🌱 Germination | 75% | Substrat humide |
+          | 🌿 Plantule | 70% | 100ml |
+          | 🌿 Végétation | 50% | 500ml |
+          | 🌸 Floraison | 40% | 1000ml |
+          | 💧 Rinçage | 55% | 2000ml |
+
+      # Graphique VPD
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.vpd
+            name: VPD
+            color: "#9b59b6"
+        name: 🌫️ VPD - Vapor Pressure Deficit (24h)
+        hours_to_show: 24
+        points_per_hour: 4
+        line_width: 3
+        font_size: 75
+        animate: true
+        show:
+          extrema: true
+          average: true
+          fill: fade
+        color_thresholds:
+          - value: 0
+            color: "#3498db"
+          - value: 0.4
+            color: "#e74c3c"
+          - value: 0.8
+            color: "#2ecc71"
+          - value: 1.2
+            color: "#27ae60"
+          - value: 1.5
+            color: "#f39c12"
+
+      # VPD explications
+      - type: markdown
+        content: |
+          ### 🌫️ VPD optimal
+
+          | Phase | VPD optimal | Explication |
+          |-------|-------------|-------------|
+          | 🌿 Végétation | 0.8-1.0 kPa | Croissance rapide |
+          | 🌸 Floraison | 1.0-1.2 kPa | Formation têtes |
+
+          **Trop bas (<0.4)** : Risque moisissure
+          **Trop haut (>1.5)** : Stress hydrique
 
       # Graphique luminosité
-      - type: history-graph
-        title: 💡 Luminosité (24h)
-        hours_to_show: 24
-        refresh_interval: 60
+      - type: custom:mini-graph-card
         entities:
           - entity: sensor.capteur_4en1_luminosite
             name: Luminosité
-
-      # Graphique VPD
-      - type: vertical-stack
-        cards:
-          - type: history-graph
-            title: 🌫️ VPD - Vapor Pressure Deficit (24h)
-            hours_to_show: 24
-            refresh_interval: 60
-            entities:
-              - entity: sensor.vpd
-                name: VPD
-
-          - type: markdown
-            content: |
-              **VPD optimal:**
-              - 🌿 Végétation: 0.8-1.0 kPa
-              - 🌸 Floraison: 1.0-1.2 kPa
-
-              Trop bas (<0.4): risque moisissure
-              Trop haut (>1.5): stress hydrique
+            color: "#f1c40f"
+        name: 💡 Luminosité (24h)
+        hours_to_show: 24
+        points_per_hour: 4
+        line_width: 3
+        font_size: 75
+        animate: true
+        show:
+          extrema: true
+          average: true
+          fill: fade
 
   # ==========================================================================
-  # VUE 2: ARROSAGE
+  # VUE 3: ARROSAGE
   # ==========================================================================
   - title: Arrosage
     path: watering
     icon: mdi:water-pump
-    badges: []
+    badges:
+      - entity: binary_sensor.besoin_arrosage
+      - entity: sensor.volume_arrosage_estime
+      - entity: counter.watering_count
+      - entity: input_boolean.auto_watering_enabled
     cards:
 
-      # Configuration arrosage
+      # Info phase actuelle
+      - type: custom:mushroom-title-card
+        title: "💧 Système d'arrosage automatique"
+        subtitle: "Phase: {{ states('input_select.grow_phase') }} • Jour {{ states('sensor.jour_de_culture') }}"
+
+      # Configuration principale
       - type: entities
-        title: ⚙️ Configuration arrosage
+        title: ⚙️ Configuration
         show_header_toggle: false
         entities:
           - entity: input_select.grow_phase
             name: Phase de culture
+            icon: mdi:sprout
           - entity: input_datetime.grow_start_date
-            name: Date de germination
+            name: Date germination
+            icon: mdi:calendar
           - type: divider
           - entity: sensor.jour_de_culture
-            name: Jour de culture
+            name: Jour
+            icon: mdi:calendar-today
           - entity: sensor.semaine_de_culture
             name: Semaine
-          - type: divider
+            icon: mdi:calendar-week
+
+      # Stats arrosage avec cartes colorées
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-entity-card
+            entity: sensor.capteur_4en1_humidite_sol
+            name: Humidité Sol
+            icon: mdi:water
+            icon_color: |
+              {% set humid = states('sensor.capteur_4en1_humidite_sol') | float %}
+              {% set seuil = states('sensor.seuil_humidite_actif') | float %}
+              {% if humid < 20 %}
+                red
+              {% elif humid < seuil %}
+                orange
+              {% else %}
+                green
+              {% endif %}
+            tap_action:
+              action: more-info
+
+          - type: custom:mushroom-entity-card
+            entity: sensor.seuil_humidite_actif
+            name: Seuil Actif
+            icon: mdi:water-percent
+            icon_color: blue
+            tap_action:
+              action: more-info
+
+          - type: custom:mushroom-entity-card
+            entity: counter.watering_count
+            name: Arrosages
+            icon: mdi:counter
+            icon_color: purple
+            tap_action:
+              action: more-info
+
+      # Indicateur besoin arrosage
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.besoin_arrosage
+            state: "on"
+        card:
+          type: custom:mushroom-template-card
+          primary: "💧 ARROSAGE NÉCESSAIRE"
+          secondary: |
+            Humidité sol: {{ states('sensor.capteur_4en1_humidite_sol') }}%
+            Seuil: {{ states('sensor.seuil_humidite_actif') }}%
+          icon: mdi:water-alert
+          icon_color: orange
+          badge_icon: mdi:alert
+          badge_color: orange
+          tap_action:
+            action: none
+
+      # Contrôle arrosage
+      - type: entities
+        title: 🎮 Contrôle
+        show_header_toggle: false
+        entities:
           - entity: input_boolean.auto_watering_enabled
             name: Arrosage automatique
-          - entity: sensor.seuil_humidite_actif
-            name: Seuil actif (phase actuelle)
-          - entity: sensor.duree_arrosage_active
-            name: Durée active (phase actuelle)
-          - entity: sensor.volume_arrosage_estime
-            name: Volume estimé par arrosage
-
-      # Stats arrosage
-      - type: entities
-        title: 📊 Statistiques arrosage
-        show_header_toggle: false
-        entities:
-          - entity: counter.watering_count
-            name: Nombre d'arrosages total
-          - entity: binary_sensor.besoin_arrosage
-            name: Besoin d'arrosage actuellement
-          - entity: sensor.capteur_4en1_humidite_sol
-            name: Humidité sol actuelle
-
-      # Contrôle manuel
-      - type: entities
-        title: 🎮 Contrôle manuel
-        show_header_toggle: false
-        entities:
+            icon: mdi:water-sync
+          - type: divider
           - entity: switch.smart_drip_irrigation
             name: Smart Drip (manuel)
+            icon: mdi:water-pump
           - type: divider
-          - entity: binary_sensor.smart_drip_alarme_eau
-            name: Alarme réservoir vide
-          - entity: binary_sensor.smart_drip_alarme_obstruction
-            name: Alarme obstruction
+          - entity: sensor.duree_arrosage_active
+            name: Durée active
+            icon: mdi:timer
+          - entity: sensor.volume_arrosage_estime
+            name: Volume estimé
+            icon: mdi:cup-water
 
-      # Seuils par phase
+      # Alarmes Smart Drip
       - type: entities
-        title: 🎚️ Seuils humidité par phase
+        title: 🚨 Alarmes Smart Drip
+        show_header_toggle: false
+        state_color: true
+        entities:
+          - entity: binary_sensor.smart_drip_alarme_eau
+            name: Réservoir vide
+            icon: mdi:water-alert
+          - entity: binary_sensor.smart_drip_alarme_obstruction
+            name: Obstruction goutteurs
+            icon: mdi:pipe-leak
+
+      # Recette engrais
+      - type: custom:mushroom-template-card
+        primary: "🧪 {{ states('input_text.fertilizer_recipe') }}"
+        secondary: "Phase: {{ states('input_select.grow_phase') }} • Semaine {{ states('sensor.semaine_de_culture') }}"
+        icon: mdi:beaker
+        icon_color: green
+        tap_action:
+          action: none
+        layout: vertical
+
+      # Tableau volumes par phase
+      - type: markdown
+        content: |
+          ### 💧 Volumes d'arrosage par phase
+
+          | Phase | Volume | Fréquence | Durée |
+          |-------|--------|-----------|-------|
+          | 🌱 Germination | 0ml | Substrat humide | 0s |
+          | 🌿 Plantule | **100ml** | 2-3 jours | 45s |
+          | 🌿 Végétation | **500ml** | 2 jours | 225s |
+          | 🌸 Floraison | **1000ml** | 2 jours | 450s |
+          | 💧 Rinçage | **2000ml** | 2 jours | 900s |
+
+          **Débit actuel:** {{ states('input_number.dripper_flow_rate') }}ml/min × 4 goutteurs
+
+      # Seuils et durées
+      - type: entities
+        title: 🎚️ Seuils humidité sol
         show_header_toggle: false
         entities:
           - entity: input_number.humidity_threshold_germination
@@ -217,12 +697,12 @@ views:
           - entity: input_number.humidity_threshold_vegetation
           - entity: input_number.humidity_threshold_floraison
           - entity: input_number.humidity_threshold_rincage
+          - type: divider
           - entity: input_number.soil_humidity_critical
-            name: Seuil critique (alerte)
+            name: Seuil critique
 
-      # Durées par phase
       - type: entities
-        title: ⏱️ Durées arrosage par phase
+        title: ⏱️ Durées arrosage
         show_header_toggle: false
         entities:
           - entity: input_number.watering_duration_germination
@@ -232,34 +712,6 @@ views:
           - entity: input_number.watering_duration_rincage
           - type: divider
           - entity: input_number.dripper_flow_rate
-            name: Débit goutteurs (4x)
-
-      # Recette engrais
-      - type: markdown
-        title: 🧪 Recette engrais active
-        content: |
-          **Phase:** {{ states('input_select.grow_phase') }}
-          **Semaine:** {{ states('sensor.semaine_de_culture') }}
-
-          ---
-
-          ### 📋 Recette:
-          **{{ states('input_text.fertilizer_recipe') }}**
-
-          ---
-
-          ### 🧪 Tableau récapitulatif engrais:
-
-          | Semaine | Root Juice | Bio Grow | Bio Bloom | Notes |
-          |---------|-----------|----------|-----------|-------|
-          | 1 | - | - | - | Eau claire |
-          | 2 | 1ml/L | - | - | Début engrais |
-          | 3-4 | 2ml/L | 1-2ml/L | - | Végétation |
-          | 5-6 | - | 2ml/L | 2ml/L | Début flo |
-          | 7-8 | - | 3ml/L | 3ml/L | Pleine flo |
-          | 9-11 | - | - | - | RINÇAGE - Eau claire! |
-
-          **pH = 6.5 TOUJOURS!** Prépare ton eau la veille.
 
       # Historique arrosages
       - type: history-graph
@@ -270,8 +722,27 @@ views:
           - entity: switch.smart_drip_irrigation
             name: Pompe arrosage
 
+      # Tableau récapitulatif engrais
+      - type: markdown
+        content: |
+          ### 🧪 Tableau engrais BioBizz
+
+          | Semaine | Root Juice | Bio Grow | Bio Bloom | pH |
+          |---------|-----------|----------|-----------|-----|
+          | 1 | - | - | - | 6.2-6.5 |
+          | 2 | 1ml/L | 0.5ml/L | - | 6.2-6.5 |
+          | 3-4 | 2ml/L | 1-2ml/L | - | 6.3-6.8 |
+          | 5-6 | - | 2ml/L | 2ml/L | 6.3-6.8 |
+          | 7-8 | - | 3ml/L | 3ml/L | 6.5-7.0 |
+          | 9-11 | - | - | - | 6.5 |
+
+          ⚠️ **Semaine 5 : STOP Root Juice!**
+          ⚠️ **Semaine 9-11 : EAU CLAIRE uniquement (rinçage)**
+
+          💡 **pH = 6.5 toujours!** Prépare ton eau la veille.
+
   # ==========================================================================
-  # VUE 3: ÉQUIPEMENTS
+  # VUE 4: ÉQUIPEMENTS
   # ==========================================================================
   - title: Équipements
     path: equipment
@@ -279,44 +750,76 @@ views:
     badges: []
     cards:
 
-      # Contrôle équipements
-      - type: entities
-        title: 🔌 Contrôle équipements
-        show_header_toggle: false
-        entities:
-          - entity: switch.prise_mars_hydro
-            name: Mars Hydro TS-1000
+      # Contrôle équipements avec cartes modernes
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-entity-card
+            entity: switch.prise_mars_hydro
+            name: Mars Hydro
             icon: mdi:lightbulb-on
-          - entity: switch.prise_extraction
-            name: Extracteur + Filtre charbon
+            icon_color: |
+              {% if is_state('switch.prise_mars_hydro', 'on') %}
+                amber
+              {% else %}
+                grey
+              {% endif %}
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+
+          - type: custom:mushroom-entity-card
+            entity: switch.prise_extraction
+            name: Extraction
             icon: mdi:fan
-          - entity: switch.smart_drip_irrigation
-            name: Smart Drip (pompe)
+            icon_color: |
+              {% if is_state('switch.prise_extraction', 'on') %}
+                blue
+              {% else %}
+                grey
+              {% endif %}
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+
+          - type: custom:mushroom-entity-card
+            entity: switch.smart_drip_irrigation
+            name: Smart Drip
             icon: mdi:water-pump
+            icon_color: |
+              {% if is_state('switch.smart_drip_irrigation', 'on') %}
+                cyan
+              {% else %}
+                grey
+              {% endif %}
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
 
       # État capteurs
       - type: entities
-        title: 📡 Capteurs
+        title: 📡 Capteurs 4-en-1
         show_header_toggle: false
+        state_color: true
         entities:
           - entity: sensor.capteur_4en1_temperature
-            name: Capteur température
+            name: Température
+            icon: mdi:thermometer
+            secondary_info: last-changed
           - entity: sensor.capteur_4en1_humidite_air
-            name: Capteur humidité air
+            name: Humidité air
+            icon: mdi:water-percent
+            secondary_info: last-changed
           - entity: sensor.capteur_4en1_humidite_sol
-            name: Capteur humidité sol
+            name: Humidité sol
+            icon: mdi:water
+            secondary_info: last-changed
           - entity: sensor.capteur_4en1_luminosite
-            name: Capteur luminosité
-
-      # Alarmes Smart Drip
-      - type: entities
-        title: 🚨 Alarmes Smart Drip
-        show_header_toggle: false
-        entities:
-          - entity: binary_sensor.smart_drip_alarme_eau
-            name: Alarme réservoir vide
-          - entity: binary_sensor.smart_drip_alarme_obstruction
-            name: Alarme obstruction goutteurs
+            name: Luminosité
+            icon: mdi:brightness-6
+            secondary_info: last-changed
 
       # Historique équipements
       - type: history-graph
@@ -331,35 +834,51 @@ views:
           - entity: switch.smart_drip_irrigation
             name: Smart Drip
 
-      # Info Mars Hydro
+      # Réglages Mars Hydro
       - type: markdown
-        title: 💡 Réglages Mars Hydro TS600
         content: |
-          **Réglages hauteur selon phase:**
+          ### 💡 Réglages Mars Hydro TS-1000 (100W)
+
+          **Hauteur selon phase:**
 
           | Phase | Semaines | Hauteur | Cycle |
           |-------|----------|---------|-------|
-          | 🌱 Semis/Plantule | 1-2 | 50-60 cm | 18h/6h ou 20h/4h |
-          | 🌿 Végétation | 3-4 | 40-50 cm | 18h/6h ou 20h/4h |
-          | 🌸 Floraison | 5-8 | 30-40 cm | 18h/6h ou 20h/4h |
-          | 💧 Rinçage | 9-11 | 30-35 cm | 18h/6h ou 20h/4h |
+          | 🌱 Semis/Plantule | 1-2 | **50-60 cm** | 18h/6h |
+          | 🌿 Végétation | 3-4 | **40-50 cm** | 18h/6h |
+          | 🌸 Floraison | 5-8 | **30-40 cm** | 18h/6h |
+          | 💧 Rinçage | 9-11 | **30-35 cm** | 18h/6h |
 
-          **La TS600 n'a PAS de dimmer** - ajuste uniquement la HAUTEUR.
+          💡 **La TS-1000 n'a PAS de dimmer**
+          ⚙️ Ajuste uniquement la **HAUTEUR**
+          🔄 Tu peux rester en 18/6h, ça marche aussi!
 
-          Tu peux rester en 18/6h, ça marche aussi!
+      # Setup complet
+      - type: markdown
+        content: |
+          ### 🛠️ Ton setup
+
+          | Équipement | Modèle | Status |
+          |-----------|--------|--------|
+          | 💡 Lampe LED | Mars Hydro TS-1000 (100W) | ✅ |
+          | ⛺ Tente | 60x60x180 cm | ✅ |
+          | 🌪️ Extracteur | 125mm (à trouver) | ✅ |
+          | 🧼 Filtre charbon | BullFilter 125mm 400m³/h | ✅ |
+          | 🪴 Pot | Air Pot 12L | ✅ |
+          | 🌱 Substrat | Light Mix BioBizz | ✅ |
+          | 🧪 Engrais | Root Juice + Bio Grow + Bio Bloom | ✅ |
+          | 📏 pH | Testeur + pH Down (cible: 6.5) | ✅ |
 
   # ==========================================================================
-  # VUE 4: CONFIGURATION
+  # VUE 5: CONFIGURATION
   # ==========================================================================
-  - title: Configuration
+  - title: Config
     path: config
     icon: mdi:cog
     badges: []
     cards:
 
-      # Phase et dates
       - type: entities
-        title: 🌱 Phase de culture
+        title: 🌱 Phase et dates
         show_header_toggle: false
         entities:
           - entity: input_select.grow_phase
@@ -368,30 +887,27 @@ views:
           - entity: sensor.jour_de_culture
           - entity: sensor.semaine_de_culture
 
-      # Seuils température
       - type: entities
-        title: 🌡️ Seuils température
+        title: 🌡️ Température
         show_header_toggle: false
         entities:
           - entity: input_number.temperature_min
           - entity: input_number.temperature_max
           - type: divider
           - entity: sensor.capteur_4en1_temperature
-            name: Température actuelle
+            name: Actuelle
 
-      # Seuils humidité air
       - type: entities
-        title: 💧 Seuils humidité air
+        title: 💧 Humidité air
         show_header_toggle: false
         entities:
           - entity: input_number.air_humidity_max
           - type: divider
           - entity: sensor.capteur_4en1_humidite_air
-            name: Humidité air actuelle
+            name: Actuelle
 
-      # Seuils humidité sol
       - type: entities
-        title: 🏜️ Seuils humidité sol
+        title: 🏜️ Humidité sol
         show_header_toggle: false
         entities:
           - entity: input_number.humidity_threshold_germination
@@ -403,11 +919,10 @@ views:
           - entity: input_number.soil_humidity_critical
           - type: divider
           - entity: sensor.seuil_humidite_actif
-            name: Seuil actif (phase)
+            name: Seuil actif
           - entity: sensor.capteur_4en1_humidite_sol
-            name: Humidité sol actuelle
+            name: Actuelle
 
-      # Durées arrosage
       - type: entities
         title: ⏱️ Durées arrosage
         show_header_toggle: false
@@ -421,26 +936,25 @@ views:
           - entity: input_number.dripper_flow_rate
           - type: divider
           - entity: sensor.duree_arrosage_active
-            name: Durée active (phase)
+            name: Durée active
           - entity: sensor.volume_arrosage_estime
             name: Volume estimé
 
-      # Activation/Désactivation
       - type: entities
-        title: 🔔 Activation fonctionnalités
+        title: 🔔 Activation
         show_header_toggle: false
         entities:
           - entity: input_boolean.auto_watering_enabled
           - entity: input_boolean.alerts_enabled
 
-      # Compteurs et stats
       - type: entities
         title: 📊 Compteurs
         show_header_toggle: false
         entities:
           - entity: counter.watering_count
           - type: button
-            name: Réinitialiser compteur arrosages
+            name: Réinitialiser
+            icon: mdi:restart
             action_name: Reset
             tap_action:
               action: call-service
@@ -449,7 +963,7 @@ views:
                 entity_id: counter.watering_count
 
   # ==========================================================================
-  # VUE 5: GUIDE DE CULTURE
+  # VUE 6: GUIDE DE CULTURE
   # ==========================================================================
   - title: Guide
     path: guide
@@ -458,14 +972,13 @@ views:
     cards:
 
       - type: markdown
-        title: 📚 Guide complet de culture
         content: |
-          # 🌱 GUIDE DE CULTURE
+          # 🌱 GUIDE DE CULTURE COMPLET
           ## Watermelon Automatic - Royal Queen Seeds
 
           ---
 
-          ## 📊 INFORMATIONS GÉNÉTIQUES
+          ### 📊 INFORMATIONS GÉNÉTIQUES
 
           - **Génétique:** Tropicanna Cookies x Lemon OG
           - **Type:** 75% Indica / 20% Sativa / 5% Ruderalis
@@ -476,110 +989,122 @@ views:
           - **Hauteur indoor:** 80-110 cm
           - **Rendement indoor:** 450-500 g/m² (50-80g/plant réaliste)
           - **Effet:** Relaxant, calming, euphorique
-          - **Goût:** Pastèque, fruité, tropical
+          - **Goût:** Pastèque, fruité, tropical 🍉
 
           ---
 
-          ## 🌱 PHASE 1: Semis (Semaine 1)
+          ### 🌱 PHASE 1: Semis (Semaine 1)
 
-          **Température:** 22-26°C
-          **Humidité air:** 70-80%
-          **Lumière:** TS600 à 50-60cm, 18-24h/jour
-          **Arrosage:** Substrat humide, pas trempé
-          **Engrais:** Aucun
-          **Hauteur attendue:** ~5 cm en fin de semaine
-
-          ---
-
-          ## 🌿 PHASE 2: Plantule (Semaine 2)
-
-          **Température:** 22-25°C jour / 18-20°C nuit
-          **Humidité air:** 55-65%
-          **Lumière:** TS600 à 50cm, 18-24h/jour
-          **Arrosage:** 100ml tous les 2-3 jours, autour de la tige
-          **Engrais:** Root Juice 1ml/L (dans le grow report 4ml/L)
-          **Hauteur attendue:** ~10 cm en fin de semaine
+          | Paramètre | Valeur |
+          |-----------|--------|
+          | 🌡️ Température | 22-26°C |
+          | 💧 Humidité air | 70-80% |
+          | 💡 Lumière | TS-1000 à 50-60cm, 18-24h/jour |
+          | 💦 Arrosage | Substrat humide, pas trempé |
+          | 🧪 Engrais | Aucun |
+          | 📏 Hauteur | ~5 cm en fin de semaine |
 
           ---
 
-          ## 🌿 PHASE 3: Végétation (Semaines 3-4)
+          ### 🌿 PHASE 2: Plantule (Semaine 2)
 
-          **Température:** 23-25°C jour / 18-22°C nuit
-          **Humidité air:** 45-55%
-          **Lumière:** TS600 à 40-45cm, 18-24h/jour
-          **Arrosage:** 500ml-1L tous les 2 jours
-          **Engrais:** Root Juice 2ml/L + Bio Grow 1-2ml/L
-          **Hauteur attendue:** 20-30 cm, pistils apparaissent fin sem. 4
-
-          ℹ️ **C'est le moment idéal pour le LST si tu veux!** La plante double de taille cette semaine.
-
-          ---
-
-          ## 🌸 PHASE 4: Floraison (Semaines 5-8)
-
-          **Température:** 25°C jour / 18-20°C nuit
-          **Humidité air:** 38-45% MAX
-          **Lumière:** TS600 à 30-40cm, 18-20h/jour
-          **Arrosage:** 1-2L tous les 2 jours
-
-          **Engrais Sem 5-6:** Bio Grow 2ml/L + Bio Bloom 2ml/L
-          **Engrais Sem 7-8:** Bio Grow 3ml/L + Bio Bloom 3ml/L
-
-          **Hauteur attendue:** 60-80 cm, têtes gonflent, arômes forts
-
-          ⚠️ **STOP le Root Juice! Humidité MAX 45%! Extracteur + filtre charbon OBLIGATOIRES!**
+          | Paramètre | Valeur |
+          |-----------|--------|
+          | 🌡️ Température | 22-25°C jour / 18-20°C nuit |
+          | 💧 Humidité air | 55-65% |
+          | 💡 Lumière | TS-1000 à 50cm, 18-24h/jour |
+          | 💦 Arrosage | **100ml tous les 2-3 jours**, autour de la tige |
+          | 🧪 Engrais | Root Juice 1ml/L - pH 6.2-6.5 |
+          | 📏 Hauteur | ~10 cm en fin de semaine |
 
           ---
 
-          ## 💧 PHASE 5: Rinçage (Semaines 9-11)
+          ### 🌿 PHASE 3: Végétation (Semaines 3-4)
+
+          | Paramètre | Valeur |
+          |-----------|--------|
+          | 🌡️ Température | 23-25°C jour / 18-22°C nuit |
+          | 💧 Humidité air | 45-55% |
+          | 💡 Lumière | TS-1000 à 40-45cm, 18-24h/jour |
+          | 💦 Arrosage | **500ml-1L tous les 2 jours** |
+          | 🧪 Engrais | Root Juice 2ml/L + Bio Grow 1-2ml/L - pH 6.3-6.8 |
+          | 📏 Hauteur | 20-30 cm, pistils apparaissent fin sem. 4 |
+
+          ℹ️ **C'est le moment idéal pour le LST si tu veux!**
+          La plante double de taille cette semaine.
+
+          ---
+
+          ### 🌸 PHASE 4: Floraison (Semaines 5-8)
+
+          | Paramètre | Valeur |
+          |-----------|--------|
+          | 🌡️ Température | 25°C jour / 18-20°C nuit |
+          | 💧 Humidité air | **38-45% MAX** ⚠️ |
+          | 💡 Lumière | TS-1000 à 30-40cm, 18-20h/jour |
+          | 💦 Arrosage | **1-2L tous les 2 jours** |
+          | 🧪 Sem 5-6 | Bio Grow 2ml/L + Bio Bloom 2ml/L - pH 6.3-6.8 |
+          | 🧪 Sem 7-8 | Bio Grow 3ml/L + Bio Bloom 3ml/L - pH 6.5-7.0 |
+          | 📏 Hauteur | 60-80 cm, têtes gonflent, arômes forts |
+
+          ⚠️ **STOP le Root Juice!**
+          ⚠️ **Humidité MAX 45%!**
+          ⚠️ **Extracteur + filtre charbon OBLIGATOIRES!**
+
+          ---
+
+          ### 💧 PHASE 5: Rinçage (Semaines 9-11)
 
           Le rinçage dure 2-3 semaines. La plante utilise ses réserves = fumée plus douce.
 
-          **Température:** 25°C jour / 18-20°C nuit
-          **Humidité air:** 35-40%
-          **Lumière:** TS600 à 30-35cm, 18-20h/jour
-          **Arrosage:** 2L tous les 2 jours
-          **Engrais:** AUCUN — EAU CLAIRE UNIQUEMENT!
-
-          **Ce qui se passe:** Feuilles jaunissent = NORMAL, c'est le signe que ça marche
+          | Paramètre | Valeur |
+          |-----------|--------|
+          | 🌡️ Température | 25°C jour / 18-20°C nuit |
+          | 💧 Humidité air | 35-40% |
+          | 💡 Lumière | TS-1000 à 30-35cm, 18-20h/jour |
+          | 💦 Arrosage | **2L tous les 2 jours** |
+          | 🧪 Engrais | **AUCUN — EAU CLAIRE UNIQUEMENT!** |
+          | 🍂 Observation | Feuilles jaunissent = NORMAL ✅ |
 
           ---
 
-          ## 🔍 RÉCOLTE (Semaine 12)
+          ### 🔍 RÉCOLTE (Semaine 12)
 
-          ### Quand récolter? Observe les trichomes avec une loupe:
+          **Observe les trichomes avec une loupe:**
 
           | Trichomes | État | Effet |
           |-----------|------|-------|
-          | Transparents | Trop tôt | Pas prêt |
-          | Laiteux/blancs | Bon | High énergique |
-          | **70% laiteux + 30% ambrés** | **PARFAIT** | **High équilibré (recommandé)** |
-          | Majoritairement ambrés | Tard | Effet sédatif, couch-lock |
+          | Transparents | ❌ Trop tôt | Pas prêt |
+          | Laiteux/blancs | ✅ Bon | High énergique |
+          | **70% laiteux + 30% ambrés** | **⭐ PARFAIT** | **High équilibré** |
+          | Majoritairement ambrés | ⚠️ Tard | Effet sédatif, couch-lock |
 
           ---
 
-          ## 🌿 SÉCHAGE
+          ### 🌿 SÉCHAGE (10-14 jours)
 
-          - Coupe la plante à la base
-          - Suspends tête en bas dans un endroit SOMBRE
-          - Laisse le ventilateur tourner, éteins les lampes
-          - **Conditions:** 18-22°C, 50-60% humidité
-          - **Durée:** 10-14 jours (les petites branches doivent CASSER, pas plier)
+          1. Coupe la plante à la base
+          2. Suspends tête en bas dans un endroit **SOMBRE**
+          3. Laisse le ventilateur tourner, éteins les lampes
+          4. **Conditions:** 18-22°C, 50-60% humidité
+          5. **Durée:** 10-14 jours
+          6. **Test:** Les petites branches doivent **CASSER**, pas plier
 
           ---
 
-          ## 🏺 AFFINAGE (CURING)
+          ### 🏺 AFFINAGE / CURING (2-8 semaines)
 
-          - Mets les buds manucurés dans des pots en verre (Mason jars)
-          - **Semaine 1:** ouvre les pots 2x par jour pendant 10-15 min (burping)
-          - **Semaines 2-4:** ouvre 1x par jour
-          - **Minimum:** 2 semaines, **idéalement:** 4-8 semaines
+          1. Mets les buds manucurés dans des pots en verre (Mason jars)
+          2. **Semaine 1:** ouvre les pots 2x par jour pendant 10-15 min (burping)
+          3. **Semaines 2-4:** ouvre 1x par jour
+          4. **Minimum:** 2 semaines
+          5. **Idéalement:** 4-8 semaines
 
           ℹ️ **Le curing améliore énormément le goût et la puissance!**
 
           ---
 
-          ## ⚠️ ERREURS À ÉVITER
+          ### ⚠️ ERREURS À ÉVITER
 
           | Erreur | Conséquence | Solution |
           |--------|-------------|----------|
@@ -592,7 +1117,7 @@ views:
 
           ---
 
-          ## 💡 CONSEILS PRO
+          ### 💡 CONSEILS PRO
 
           - **SOULÈVE TON POT** pour savoir quand arroser — pot léger = arrose!
           - Feuilles qui tombent légèrement = besoin d'eau
@@ -603,30 +1128,11 @@ views:
 
           ---
 
-          ## 📊 BONNE CULTURE!
+          ### 📊 BONNE CULTURE!
 
           | Paramètre | Valeur |
           |-----------|--------|
           | **Durée totale** | 10-12 semaines |
           | **Rendement réaliste** | 50-80g par plant |
           | **THC** | 20% |
-          | **Effet** | Relaxant, yeux rouges, appétit |
-
-          ---
-
-          ## 🧪 TABLEAU ENGRAIS RÉCAPITULATIF
-
-          | SEMAINE | ROOT JUICE | BIO GROW | BIO BLOOM | NOTES |
-          |---------|-----------|----------|-----------|-------|
-          | 1 | - | - | - | Eau claire |
-          | 2 | 1ml/L | 0.5ml/L | - | Début engrais |
-          | 3-4 | 2ml/L | 1-2ml/L | - | Végétation |
-          | 5-6 | - | 2ml/L | 2ml/L | Début flo |
-          | 7-8 | - | 3ml/L | 3ml/L | Pleine flo |
-          | 9-11 | - | - | - | RINÇAGE - Eau claire! |
-
-          **pH = 6.5 TOUJOURS!** Prépare ton eau la veille.
-
-          ---
-
-          Bonne culture! 🌱
+          | **Effet** | Relaxant, yeux rouges, appétit 😋 |
