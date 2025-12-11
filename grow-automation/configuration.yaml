@@ -1,0 +1,413 @@
+# ============================================================================
+# MAGIC GARDEN - IoT Cannabis Grow Automation
+# ============================================================================
+# Configuration Home Assistant pour automatisation culture indoor
+# À ajouter à votre configuration.yaml existante
+# ============================================================================
+
+# INPUTS - Paramètres de configuration
+# ============================================================================
+
+input_select:
+  # Sélecteur de phase de culture
+  grow_phase:
+    name: "Phase de culture"
+    options:
+      - "Germination"
+      - "Plantule"
+      - "Végétation"
+      - "Floraison"
+      - "Rinçage"
+    initial: "Plantule"
+    icon: mdi:sprout
+
+input_datetime:
+  # Date de germination
+  grow_start_date:
+    name: "Date de germination"
+    has_date: true
+    has_time: false
+    initial: "2024-11-30"
+
+input_number:
+  # Seuils d'humidité du sol par phase
+  humidity_threshold_germination:
+    name: "Seuil humidité - Germination"
+    min: 50
+    max: 90
+    step: 5
+    unit_of_measurement: "%"
+    initial: 75
+    icon: mdi:water-percent
+
+  humidity_threshold_plantule:
+    name: "Seuil humidité - Plantule"
+    min: 50
+    max: 90
+    step: 5
+    unit_of_measurement: "%"
+    initial: 70
+    icon: mdi:water-percent
+
+  humidity_threshold_vegetation:
+    name: "Seuil humidité - Végétation"
+    min: 30
+    max: 70
+    step: 5
+    unit_of_measurement: "%"
+    initial: 50
+    icon: mdi:water-percent
+
+  humidity_threshold_floraison:
+    name: "Seuil humidité - Floraison"
+    min: 30
+    max: 60
+    step: 5
+    unit_of_measurement: "%"
+    initial: 40
+    icon: mdi:water-percent
+
+  humidity_threshold_rincage:
+    name: "Seuil humidité - Rinçage"
+    min: 40
+    max: 70
+    step: 5
+    unit_of_measurement: "%"
+    initial: 55
+    icon: mdi:water-percent
+
+  # Durées d'arrosage par phase (en secondes)
+  watering_duration_germination:
+    name: "Durée arrosage - Germination"
+    min: 0
+    max: 120
+    step: 5
+    unit_of_measurement: "s"
+    initial: 0
+    icon: mdi:timer
+
+  watering_duration_plantule:
+    name: "Durée arrosage - Plantule"
+    min: 30
+    max: 300
+    step: 10
+    unit_of_measurement: "s"
+    initial: 60
+    icon: mdi:timer
+
+  watering_duration_vegetation:
+    name: "Durée arrosage - Végétation"
+    min: 120
+    max: 600
+    step: 30
+    unit_of_measurement: "s"
+    initial: 420
+    icon: mdi:timer
+
+  watering_duration_floraison:
+    name: "Durée arrosage - Floraison"
+    min: 300
+    max: 1800
+    step: 60
+    unit_of_measurement: "s"
+    initial: 1020
+    icon: mdi:timer
+
+  watering_duration_rincage:
+    name: "Durée arrosage - Rinçage"
+    min: 600
+    max: 2400
+    step: 60
+    unit_of_measurement: "s"
+    initial: 1200
+    icon: mdi:timer
+
+  # Seuils de température
+  temperature_min:
+    name: "Température minimale"
+    min: 10
+    max: 20
+    step: 1
+    unit_of_measurement: "°C"
+    initial: 16
+    icon: mdi:thermometer-low
+
+  temperature_max:
+    name: "Température maximale"
+    min: 25
+    max: 35
+    step: 1
+    unit_of_measurement: "°C"
+    initial: 30
+    icon: mdi:thermometer-high
+
+  # Seuil d'humidité de l'air maximale
+  air_humidity_max:
+    name: "Humidité air maximale"
+    min: 40
+    max: 80
+    step: 5
+    unit_of_measurement: "%"
+    initial: 60
+    icon: mdi:water-percent-alert
+
+  # Seuil d'humidité du sol critique (alerte)
+  soil_humidity_critical:
+    name: "Humidité sol critique"
+    min: 10
+    max: 30
+    step: 5
+    unit_of_measurement: "%"
+    initial: 20
+    icon: mdi:water-alert
+
+  # Débit des goutteurs (ml/min)
+  dripper_flow_rate:
+    name: "Débit goutteurs"
+    min: 50
+    max: 300
+    step: 10
+    unit_of_measurement: "ml/min"
+    initial: 100
+    icon: mdi:water-pump
+
+input_text:
+  # Recette d'engrais actuelle
+  fertilizer_recipe:
+    name: "Recette engrais"
+    initial: "Root Juice 1ml/L - pH 6.2-6.5"
+    max: 255
+    icon: mdi:beaker
+
+input_boolean:
+  # Activation de l'arrosage automatique
+  auto_watering_enabled:
+    name: "Arrosage automatique"
+    initial: true
+    icon: mdi:water-pump
+
+  # Activation des alertes
+  alerts_enabled:
+    name: "Alertes activées"
+    initial: true
+    icon: mdi:bell-alert
+
+# COUNTERS - Compteurs
+# ============================================================================
+
+counter:
+  # Compteur d'arrosages
+  watering_count:
+    name: "Nombre d'arrosages"
+    initial: 0
+    step: 1
+    icon: mdi:counter
+
+# TEMPLATE SENSORS - Capteurs calculés
+# ============================================================================
+
+template:
+  - sensor:
+      # Jour de culture (depuis germination)
+      - name: "Jour de culture"
+        unique_id: grow_day
+        state: >
+          {% set start = states('input_datetime.grow_start_date') %}
+          {% if start != 'unknown' %}
+            {{ (now().date() - (start | as_datetime).date()).days + 1 }}
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "jours"
+        icon: mdi:calendar-today
+
+      # Semaine de culture
+      - name: "Semaine de culture"
+        unique_id: grow_week
+        state: >
+          {% set day = states('sensor.jour_de_culture') | int %}
+          {{ (day / 7) | round(0, 'ceil') | int }}
+        unit_of_measurement: "semaines"
+        icon: mdi:calendar-week
+
+      # Seuil d'humidité actif (selon la phase)
+      - name: "Seuil humidité actif"
+        unique_id: active_humidity_threshold
+        state: >
+          {% set phase = states('input_select.grow_phase') %}
+          {% if phase == 'Germination' %}
+            {{ states('input_number.humidity_threshold_germination') }}
+          {% elif phase == 'Plantule' %}
+            {{ states('input_number.humidity_threshold_plantule') }}
+          {% elif phase == 'Végétation' %}
+            {{ states('input_number.humidity_threshold_vegetation') }}
+          {% elif phase == 'Floraison' %}
+            {{ states('input_number.humidity_threshold_floraison') }}
+          {% elif phase == 'Rinçage' %}
+            {{ states('input_number.humidity_threshold_rincage') }}
+          {% else %}
+            50
+          {% endif %}
+        unit_of_measurement: "%"
+        icon: mdi:water-percent
+
+      # Durée d'arrosage active (selon la phase)
+      - name: "Durée arrosage active"
+        unique_id: active_watering_duration
+        state: >
+          {% set phase = states('input_select.grow_phase') %}
+          {% if phase == 'Germination' %}
+            {{ states('input_number.watering_duration_germination') }}
+          {% elif phase == 'Plantule' %}
+            {{ states('input_number.watering_duration_plantule') }}
+          {% elif phase == 'Végétation' %}
+            {{ states('input_number.watering_duration_vegetation') }}
+          {% elif phase == 'Floraison' %}
+            {{ states('input_number.watering_duration_floraison') }}
+          {% elif phase == 'Rinçage' %}
+            {{ states('input_number.watering_duration_rincage') }}
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "s"
+        icon: mdi:timer
+
+      # Volume d'eau estimé (ml)
+      - name: "Volume arrosage estimé"
+        unique_id: estimated_water_volume
+        state: >
+          {% set duration = states('sensor.duree_arrosage_active') | float %}
+          {% set flow_rate = states('input_number.dripper_flow_rate') | float %}
+          {{ (duration / 60 * flow_rate * 4) | round(0) }}
+        unit_of_measurement: "ml"
+        icon: mdi:cup-water
+
+      # État de santé global
+      - name: "État santé plante"
+        unique_id: plant_health_status
+        state: >
+          {% set temp = states('sensor.capteur_4en1_temperature') | float(0) %}
+          {% set soil = states('sensor.capteur_4en1_humidite_sol') | float(0) %}
+          {% set air = states('sensor.capteur_4en1_humidite_air') | float(0) %}
+          {% set temp_min = states('input_number.temperature_min') | float %}
+          {% set temp_max = states('input_number.temperature_max') | float %}
+          {% set air_max = states('input_number.air_humidity_max') | float %}
+          {% set soil_crit = states('input_number.soil_humidity_critical') | float %}
+
+          {% if temp < temp_min or temp > temp_max %}
+            Température critique
+          {% elif air > air_max %}
+            Humidité air élevée
+          {% elif soil < soil_crit %}
+            Sol trop sec
+          {% elif soil < 30 %}
+            Attention hydratation
+          {% else %}
+            Optimal
+          {% endif %}
+        icon: >
+          {% set status = this.state %}
+          {% if 'critique' in status %}
+            mdi:alert-circle
+          {% elif 'Attention' in status or 'élevée' in status %}
+            mdi:alert
+          {% else %}
+            mdi:check-circle
+          {% endif %}
+
+      # VPD (Vapor Pressure Deficit) - simplifié
+      - name: "VPD"
+        unique_id: vpd
+        state: >
+          {% set temp = states('sensor.capteur_4en1_temperature') | float(0) %}
+          {% set rh = states('sensor.capteur_4en1_humidite_air') | float(0) %}
+          {% if temp > 0 and rh > 0 %}
+            {% set svp = 0.6108 * 2.71828 ** ((17.27 * temp) / (temp + 237.3)) %}
+            {% set avp = svp * (rh / 100) %}
+            {{ ((svp - avp) | round(2)) }}
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "kPa"
+        icon: mdi:cloud-percent
+
+  - binary_sensor:
+      # Besoin d'arrosage
+      - name: "Besoin arrosage"
+        unique_id: needs_watering
+        state: >
+          {% set soil = states('sensor.capteur_4en1_humidite_sol') | float(100) %}
+          {% set threshold = states('sensor.seuil_humidite_actif') | float(50) %}
+          {{ soil < threshold }}
+        icon: >
+          {% if is_state('binary_sensor.besoin_arrosage', 'on') %}
+            mdi:water-alert
+          {% else %}
+            mdi:water-check
+          {% endif %}
+
+      # Phase floraison (pour alertes critiques)
+      - name: "Phase floraison active"
+        unique_id: flowering_phase_active
+        state: >
+          {{ is_state('input_select.grow_phase', 'Floraison') }}
+        icon: mdi:flower
+
+# HISTORY & RECORDER - Conservation des données
+# ============================================================================
+
+recorder:
+  include:
+    entities:
+      # Capteurs environnementaux
+      - sensor.capteur_4en1_temperature
+      - sensor.capteur_4en1_humidite_air
+      - sensor.capteur_4en1_humidite_sol
+      - sensor.capteur_4en1_luminosite
+      # Capteurs calculés
+      - sensor.jour_de_culture
+      - sensor.semaine_de_culture
+      - sensor.seuil_humidite_actif
+      - sensor.duree_arrosage_active
+      - sensor.volume_arrosage_estime
+      - sensor.etat_sante_plante
+      - sensor.vpd
+      # Binary sensors
+      - binary_sensor.besoin_arrosage
+      - binary_sensor.phase_floraison_active
+      # Équipements
+      - switch.smart_drip_irrigation
+      - switch.prise_mars_hydro
+      - switch.prise_extraction
+      # Compteurs
+      - counter.watering_count
+      # Inputs importants
+      - input_select.grow_phase
+      - input_datetime.grow_start_date
+
+history:
+  include:
+    entities:
+      - sensor.capteur_4en1_temperature
+      - sensor.capteur_4en1_humidite_air
+      - sensor.capteur_4en1_humidite_sol
+      - sensor.capteur_4en1_luminosite
+      - sensor.jour_de_culture
+      - sensor.semaine_de_culture
+      - sensor.etat_sante_plante
+      - sensor.vpd
+      - binary_sensor.besoin_arrosage
+      - switch.smart_drip_irrigation
+      - counter.watering_count
+
+# LOGBOOK - Journal d'événements
+# ============================================================================
+
+logbook:
+  include:
+    entities:
+      - input_select.grow_phase
+      - switch.smart_drip_irrigation
+      - binary_sensor.besoin_arrosage
+      - counter.watering_count
+      - sensor.etat_sante_plante

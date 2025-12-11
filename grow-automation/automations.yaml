@@ -1,0 +1,580 @@
+# ============================================================================
+# MAGIC GARDEN - Automations IoT Cannabis Grow
+# ============================================================================
+# Automations Home Assistant pour gestion automatique de la culture
+# À ajouter à votre automations.yaml existante
+# ============================================================================
+
+# ============================================================================
+# ARROSAGE AUTOMATIQUE
+# ============================================================================
+
+- id: auto_watering_trigger
+  alias: "🌱 Arrosage automatique"
+  description: "Déclenche l'arrosage quand l'humidité du sol passe sous le seuil"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.capteur_4en1_humidite_sol
+      below: sensor.seuil_humidite_actif
+      for:
+        minutes: 5
+  condition:
+    - condition: state
+      entity_id: input_boolean.auto_watering_enabled
+      state: "on"
+    - condition: state
+      entity_id: switch.smart_drip_irrigation
+      state: "off"
+    - condition: state
+      entity_id: binary_sensor.smart_drip_alarme_eau
+      state: "off"
+    - condition: template
+      value_template: >
+        {{ states('sensor.duree_arrosage_active') | float > 0 }}
+  action:
+    - service: notify.persistent_notification
+      data:
+        title: "🌱 Arrosage en cours"
+        message: >
+          Humidité sol: {{ states('sensor.capteur_4en1_humidite_sol') }}%
+          Seuil: {{ states('sensor.seuil_humidite_actif') }}%
+          Phase: {{ states('input_select.grow_phase') }}
+          Durée: {{ states('sensor.duree_arrosage_active') }}s
+          Volume: ~{{ states('sensor.volume_arrosage_estime') }}ml
+    - service: switch.turn_on
+      entity_id: switch.smart_drip_irrigation
+    - service: counter.increment
+      entity_id: counter.watering_count
+    - delay:
+        seconds: "{{ states('sensor.duree_arrosage_active') | int }}"
+    - service: switch.turn_off
+      entity_id: switch.smart_drip_irrigation
+    - service: notify.persistent_notification
+      data:
+        title: "✅ Arrosage terminé"
+        message: >
+          Arrosage #{{ states('counter.watering_count') }} terminé
+          Volume distribué: ~{{ states('sensor.volume_arrosage_estime') }}ml
+          Attendre 30min pour nouvelle mesure d'humidité
+
+- id: watering_manual_safety_shutoff
+  alias: "🛑 Sécurité arrosage - Arrêt manuel"
+  description: "Arrête l'arrosage si désactivé manuellement pendant un cycle"
+  trigger:
+    - platform: state
+      entity_id: input_boolean.auto_watering_enabled
+      to: "off"
+  condition:
+    - condition: state
+      entity_id: switch.smart_drip_irrigation
+      state: "on"
+  action:
+    - service: switch.turn_off
+      entity_id: switch.smart_drip_irrigation
+    - service: notify.persistent_notification
+      data:
+        title: "🛑 Arrosage interrompu"
+        message: "Arrosage automatique désactivé - pompe arrêtée"
+
+# ============================================================================
+# GESTION RECETTE ENGRAIS
+# ============================================================================
+
+- id: update_fertilizer_recipe
+  alias: "🧪 MAJ recette engrais"
+  description: "Met à jour la recette d'engrais selon la phase de culture"
+  trigger:
+    - platform: state
+      entity_id: input_select.grow_phase
+  action:
+    - service: input_text.set_value
+      target:
+        entity_id: input_text.fertilizer_recipe
+      data:
+        value: >
+          {% set phase = states('input_select.grow_phase') %}
+          {% set week = states('sensor.semaine_de_culture') | int %}
+          {% if phase == 'Germination' %}
+            Eau claire - pH 6.2-6.5
+          {% elif phase == 'Plantule' %}
+            Root Juice 1ml/L - pH 6.2-6.5
+          {% elif phase == 'Végétation' and week <= 3 %}
+            Root Juice 2ml/L + Bio Grow 0.5ml/L - pH 6.3-6.5
+          {% elif phase == 'Végétation' %}
+            Root Juice 2-4ml/L + Bio Grow 1-2ml/L - pH 6.3-6.8
+          {% elif phase == 'Floraison' and week <= 6 %}
+            Bio Grow 1ml/L + Bio Bloom 1-2ml/L - pH 6.3-6.8 (STOP Root Juice)
+          {% elif phase == 'Floraison' %}
+            Bio Bloom 2-3ml/L - pH 6.5-7.0
+          {% elif phase == 'Rinçage' %}
+            EAU CLAIRE UNIQUEMENT - pH 6.5
+          {% else %}
+            Vérifier le guide de culture
+          {% endif %}
+    - service: notify.persistent_notification
+      data:
+        title: "🧪 Recette engrais mise à jour"
+        message: >
+          Phase: {{ states('input_select.grow_phase') }}
+          Semaine: {{ states('sensor.semaine_de_culture') }}
+          Recette: {{ states('input_text.fertilizer_recipe') }}
+
+# ============================================================================
+# ALERTES TEMPÉRATURE
+# ============================================================================
+
+- id: alert_temperature_high
+  alias: "🌡️ Alerte température élevée"
+  description: "Alerte si température > max pendant 10min"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.capteur_4en1_temperature
+      above: input_number.temperature_max
+      for:
+        minutes: 10
+  condition:
+    - condition: state
+      entity_id: input_boolean.alerts_enabled
+      state: "on"
+  action:
+    - service: notify.persistent_notification
+      data:
+        title: "🌡️ ALERTE TEMPÉRATURE ÉLEVÉE"
+        message: >
+          Température: {{ states('sensor.capteur_4en1_temperature') }}°C
+          Seuil max: {{ states('input_number.temperature_max') }}°C
+
+          ACTIONS:
+          - Vérifier l'extraction
+          - Augmenter la ventilation
+          - Vérifier la climatisation
+          - Surveiller étroitement
+        notification_id: temp_high_alert
+    - service: persistent_notification.create
+      data:
+        title: "🌡️ TEMPÉRATURE ÉLEVÉE"
+        message: >
+          {{ states('sensor.capteur_4en1_temperature') }}°C
+          (max: {{ states('input_number.temperature_max') }}°C)
+        notification_id: temp_high_persistent
+
+- id: alert_temperature_low
+  alias: "❄️ Alerte température basse"
+  description: "Alerte si température < min pendant 30min"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.capteur_4en1_temperature
+      below: input_number.temperature_min
+      for:
+        minutes: 30
+  condition:
+    - condition: state
+      entity_id: input_boolean.alerts_enabled
+      state: "on"
+  action:
+    - service: notify.persistent_notification
+      data:
+        title: "❄️ ALERTE TEMPÉRATURE BASSE"
+        message: >
+          Température: {{ states('sensor.capteur_4en1_temperature') }}°C
+          Seuil min: {{ states('input_number.temperature_min') }}°C
+
+          ACTIONS:
+          - Vérifier le chauffage
+          - Réduire l'extraction
+          - Isoler la tente si nécessaire
+        notification_id: temp_low_alert
+
+- id: clear_temperature_alerts
+  alias: "✅ Température revenue normale"
+  description: "Efface les alertes température quand revenue normale"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.capteur_4en1_temperature
+      above: input_number.temperature_min
+      below: input_number.temperature_max
+      for:
+        minutes: 5
+  action:
+    - service: persistent_notification.dismiss
+      data:
+        notification_id: temp_high_persistent
+    - service: persistent_notification.dismiss
+      data:
+        notification_id: temp_low_persistent
+
+# ============================================================================
+# ALERTES HUMIDITÉ AIR
+# ============================================================================
+
+- id: alert_air_humidity_high
+  alias: "💧 Alerte humidité air élevée"
+  description: "Alerte si humidité air > max pendant 30min (critique en floraison)"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.capteur_4en1_humidite_air
+      above: input_number.air_humidity_max
+      for:
+        minutes: 30
+  condition:
+    - condition: state
+      entity_id: input_boolean.alerts_enabled
+      state: "on"
+  action:
+    - service: notify.persistent_notification
+      data:
+        title: >
+          {% if is_state('binary_sensor.phase_floraison_active', 'on') %}
+          🚨 ALERTE CRITIQUE HUMIDITÉ AIR (FLORAISON)
+          {% else %}
+          💧 ALERTE HUMIDITÉ AIR ÉLEVÉE
+          {% endif %}
+        message: >
+          Humidité air: {{ states('sensor.capteur_4en1_humidite_air') }}%
+          Seuil max: {{ states('input_number.air_humidity_max') }}%
+          Phase: {{ states('input_select.grow_phase') }}
+          {% if is_state('binary_sensor.phase_floraison_active', 'on') %}
+
+          ⚠️ RISQUE DE MOISISSURE ÉLEVÉ EN FLORAISON!
+          {% endif %}
+
+          ACTIONS:
+          - Augmenter l'extraction (switch.prise_extraction)
+          - Vérifier la ventilation interne
+          - Réduire l'arrosage si possible
+          - Surveiller les têtes pour moisissure
+        notification_id: air_humidity_alert
+    - service: persistent_notification.create
+      data:
+        title: "💧 HUMIDITÉ AIR ÉLEVÉE"
+        message: >
+          {{ states('sensor.capteur_4en1_humidite_air') }}%
+          (max: {{ states('input_number.air_humidity_max') }}%)
+          {% if is_state('binary_sensor.phase_floraison_active', 'on') %}
+          🚨 FLORAISON - RISQUE MOISISSURE
+          {% endif %}
+        notification_id: air_humidity_persistent
+
+- id: clear_air_humidity_alert
+  alias: "✅ Humidité air revenue normale"
+  description: "Efface l'alerte humidité air quand revenue normale"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.capteur_4en1_humidite_air
+      below: input_number.air_humidity_max
+      for:
+        minutes: 10
+  action:
+    - service: persistent_notification.dismiss
+      data:
+        notification_id: air_humidity_persistent
+
+# ============================================================================
+# ALERTES HUMIDITÉ SOL
+# ============================================================================
+
+- id: alert_soil_humidity_critical
+  alias: "🏜️ Alerte humidité sol critique"
+  description: "Alerte si humidité sol < critique pendant 2h"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.capteur_4en1_humidite_sol
+      below: input_number.soil_humidity_critical
+      for:
+        hours: 2
+  condition:
+    - condition: state
+      entity_id: input_boolean.alerts_enabled
+      state: "on"
+  action:
+    - service: notify.persistent_notification
+      data:
+        title: "🏜️ ALERTE SOL CRITIQUE - INTERVENTION REQUISE"
+        message: >
+          Humidité sol: {{ states('sensor.capteur_4en1_humidite_sol') }}%
+          Seuil critique: {{ states('input_number.soil_humidity_critical') }}%
+
+          ⚠️ PLANTE EN STRESS HYDRIQUE!
+
+          ACTIONS IMMÉDIATES:
+          - Vérifier le système d'arrosage
+          - Arroser manuellement si nécessaire
+          - Vérifier réservoir Smart Drip
+          - Vérifier goutteurs non bouchés
+        notification_id: soil_critical_alert
+
+# ============================================================================
+# ALERTES ÉQUIPEMENT
+# ============================================================================
+
+- id: alert_water_tank_empty
+  alias: "💧 Alerte réservoir vide"
+  description: "Alerte si réservoir Smart Drip vide"
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.smart_drip_alarme_eau
+      to: "on"
+  condition:
+    - condition: state
+      entity_id: input_boolean.alerts_enabled
+      state: "on"
+  action:
+    - service: switch.turn_off
+      entity_id: switch.smart_drip_irrigation
+    - service: input_boolean.turn_off
+      entity_id: input_boolean.auto_watering_enabled
+    - service: notify.persistent_notification
+      data:
+        title: "💧 ALERTE RÉSERVOIR VIDE"
+        message: >
+          Le réservoir du Smart Drip est vide!
+
+          ACTIONS:
+          - Remplir le réservoir d'eau
+          - Préparer la solution nutritive
+          - pH à {{ states('input_text.fertilizer_recipe').split('pH')[1] if 'pH' in states('input_text.fertilizer_recipe') else '6.5' }}
+          - Réactiver l'arrosage automatique
+
+          Arrosage automatique désactivé par sécurité.
+        notification_id: water_tank_alert
+
+- id: alert_dripper_clog
+  alias: "🚫 Alerte goutteurs bouchés"
+  description: "Alerte si obstruction détectée dans les goutteurs"
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.smart_drip_alarme_obstruction
+      to: "on"
+  condition:
+    - condition: state
+      entity_id: input_boolean.alerts_enabled
+      state: "on"
+  action:
+    - service: switch.turn_off
+      entity_id: switch.smart_drip_irrigation
+    - service: input_boolean.turn_off
+      entity_id: input_boolean.auto_watering_enabled
+    - service: notify.persistent_notification
+      data:
+        title: "🚫 ALERTE OBSTRUCTION GOUTTEURS"
+        message: >
+          Obstruction détectée dans le système d'irrigation!
+
+          ACTIONS:
+          - Vérifier les 4 goutteurs
+          - Nettoyer les embouts
+          - Vérifier les tuyaux
+          - Purger le système
+          - Réactiver après vérification
+
+          Arrosage automatique désactivé par sécurité.
+        notification_id: dripper_clog_alert
+
+- id: alert_light_low_when_on
+  alias: "💡 Alerte lumière faible"
+  description: "Alerte si Mars Hydro allumée mais luminosité faible"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.capteur_4en1_luminosite
+      below: 10000
+      for:
+        minutes: 30
+  condition:
+    - condition: state
+      entity_id: switch.prise_mars_hydro
+      state: "on"
+    - condition: state
+      entity_id: input_boolean.alerts_enabled
+      state: "on"
+  action:
+    - service: notify.persistent_notification
+      data:
+        title: "💡 ALERTE LUMIÈRE FAIBLE"
+        message: >
+          Mars Hydro allumée mais luminosité faible!
+          Luminosité: {{ states('sensor.capteur_4en1_luminosite') }} lux
+
+          VÉRIFICATIONS:
+          - Lampe Mars Hydro fonctionnelle?
+          - Distance correcte (30-60cm selon phase)?
+          - LED en bon état?
+          - Capteur bien positionné?
+        notification_id: light_low_alert
+
+# ============================================================================
+# RAPPORT QUOTIDIEN
+# ============================================================================
+
+- id: daily_grow_report
+  alias: "📊 Rapport quotidien de culture"
+  description: "Rapport quotidien à 20h avec stats du jour"
+  trigger:
+    - platform: time
+      at: "20:00:00"
+  action:
+    - service: notify.persistent_notification
+      data:
+        title: "📊 Rapport quotidien - Jour {{ states('sensor.jour_de_culture') }}"
+        message: >
+          🌱 WATERMELON X OG KUSH AUTO
+
+          📅 Jour {{ states('sensor.jour_de_culture') }} (Semaine {{ states('sensor.semaine_de_culture') }})
+          🔄 Phase: {{ states('input_select.grow_phase') }}
+
+          📊 CONDITIONS ACTUELLES:
+          🌡️ Température: {{ states('sensor.capteur_4en1_temperature') }}°C
+          💧 Humidité air: {{ states('sensor.capteur_4en1_humidite_air') }}%
+          🏜️ Humidité sol: {{ states('sensor.capteur_4en1_humidite_sol') }}%
+          💡 Luminosité: {{ states('sensor.capteur_4en1_luminosite') }} lux
+          🌫️ VPD: {{ states('sensor.vpd') }} kPa
+
+          💦 ARROSAGE:
+          Arrosages aujourd'hui: {{ states('counter.watering_count') }}
+          Seuil actif: {{ states('sensor.seuil_humidite_actif') }}%
+          Durée: {{ states('sensor.duree_arrosage_active') }}s
+          Volume/arrosage: ~{{ states('sensor.volume_arrosage_estime') }}ml
+
+          🧪 ENGRAIS:
+          {{ states('input_text.fertilizer_recipe') }}
+
+          ❤️ SANTÉ: {{ states('sensor.etat_sante_plante') }}
+
+          📌 N'oublie pas de vérifier visuellement la plante!
+        notification_id: daily_report
+
+# ============================================================================
+# CHANGEMENTS DE PHASE SUGGÉRÉS
+# ============================================================================
+
+- id: suggest_phase_change_to_vegetation
+  alias: "🌿 Suggestion passage en végétation"
+  description: "Suggère de passer en végétation à la semaine 2"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.semaine_de_culture
+      above: 1
+  condition:
+    - condition: state
+      entity_id: input_select.grow_phase
+      state: "Plantule"
+  action:
+    - service: notify.persistent_notification
+      data:
+        title: "🌿 Suggestion changement de phase"
+        message: >
+          Tu es en semaine {{ states('sensor.semaine_de_culture') }}, toujours en phase Plantule.
+
+          C'est le moment idéal pour passer en VÉGÉTATION si:
+          - La plante fait ~10cm
+          - Elle a 2-3 paires de vraies feuilles
+          - Les pistils blancs apparaissent (fin végé)
+
+          Recette végétation:
+          Root Juice 2ml/L + Bio Grow 0.5-2ml/L - pH 6.3-6.8
+
+- id: suggest_phase_change_to_flowering
+  alias: "🌸 Suggestion passage en floraison"
+  description: "Suggère de passer en floraison à la semaine 4"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.semaine_de_culture
+      above: 3
+  condition:
+    - condition: state
+      entity_id: input_select.grow_phase
+      state: "Végétation"
+  action:
+    - service: notify.persistent_notification
+      data:
+        title: "🌸 Suggestion changement de phase"
+        message: >
+          Tu es en semaine {{ states('sensor.semaine_de_culture') }}, toujours en Végétation.
+
+          C'est le moment de passer en FLORAISON si:
+          - Pistils blancs visibles
+          - Taille: 20-30cm
+          - La plante semble mature
+
+          ⚠️ IMPORTANT EN FLORAISON:
+          - STOP Root Juice
+          - Humidité air MAX 45% (moisissure!)
+          - Extracteur + filtre charbon OBLIGATOIRE (odeurs)
+          - Recette: Bio Bloom 2-3ml/L - pH 6.5-7.0
+
+- id: suggest_phase_change_to_flush
+  alias: "💧 Suggestion passage en rinçage"
+  description: "Suggère de passer en rinçage à la semaine 9"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.semaine_de_culture
+      above: 8
+  condition:
+    - condition: state
+      entity_id: input_select.grow_phase
+      state: "Floraison"
+  action:
+    - service: notify.persistent_notification
+      data:
+        title: "💧 Suggestion passage en rinçage"
+        message: >
+          Tu es en semaine {{ states('sensor.semaine_de_culture') }}, en Floraison.
+
+          C'est le moment de RINCER si:
+          - Trichomes 70% laiteux + 30% ambrés (OPTIMAL)
+          - Têtes gonflées, odeurs fortes
+          - Feuilles jaunissent naturellement
+
+          RINÇAGE (2-3 semaines):
+          - EAU CLAIRE UNIQUEMENT
+          - pH 6.5
+          - 2L tous les 2 jours
+          - Feuilles jaunissent = NORMAL
+
+          ⚠️ Observer les trichomes avec loupe!
+
+# ============================================================================
+# OPTIMISATION VPD
+# ============================================================================
+
+- id: vpd_optimization_alert
+  alias: "🌫️ Alerte optimisation VPD"
+  description: "Suggère ajustements pour VPD optimal"
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.vpd
+      above: 1.5
+      for:
+        hours: 2
+    - platform: numeric_state
+      entity_id: sensor.vpd
+      below: 0.4
+      for:
+        hours: 2
+  condition:
+    - condition: state
+      entity_id: input_boolean.alerts_enabled
+      state: "on"
+  action:
+    - service: notify.persistent_notification
+      data:
+        title: "🌫️ VPD non optimal"
+        message: >
+          VPD actuel: {{ states('sensor.vpd') }} kPa
+          Température: {{ states('sensor.capteur_4en1_temperature') }}°C
+          Humidité: {{ states('sensor.capteur_4en1_humidite_air') }}%
+
+          {% if states('sensor.vpd') | float > 1.5 %}
+          VPD TROP ÉLEVÉ (stress hydrique):
+          - Augmenter humidité air
+          - Baisser température
+          - Vaporiser eau (pas sur flo!)
+          {% else %}
+          VPD TROP BAS (risque moisissure):
+          - Diminuer humidité air
+          - Augmenter température
+          - Améliorer ventilation
+          {% endif %}
+
+          VPD optimal:
+          Végé: 0.8-1.0 kPa
+          Flo: 1.0-1.2 kPa

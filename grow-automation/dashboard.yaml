@@ -1,0 +1,632 @@
+# ============================================================================
+# MAGIC GARDEN - Dashboard Lovelace
+# ============================================================================
+# Interface complète pour monitoring et contrôle de la culture
+# À ajouter comme nouveau dashboard dans Home Assistant
+# ============================================================================
+# INSTRUCTIONS:
+# 1. Configuration > Dashboards > + Add Dashboard
+# 2. Nom: "Magic Garden 🌱"
+# 3. Cliquer sur les 3 points > Raw configuration editor
+# 4. Coller ce contenu et sauvegarder
+# ============================================================================
+
+title: Magic Garden 🌱
+views:
+
+  # ==========================================================================
+  # VUE 1: MONITORING
+  # ==========================================================================
+  - title: Monitoring
+    path: monitoring
+    icon: mdi:monitor-dashboard
+    badges: []
+    cards:
+
+      # En-tête avec infos principales
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: |
+              # 🌱 WATERMELON X OG KUSH AUTO
+              **Jour {{ states('sensor.jour_de_culture') }} - Semaine {{ states('sensor.semaine_de_culture') }}**
+
+              Phase: **{{ states('input_select.grow_phase') }}** | Santé: **{{ states('sensor.etat_sante_plante') }}**
+
+          - type: entities
+            title: 📊 Conditions en temps réel
+            show_header_toggle: false
+            entities:
+              - entity: sensor.capteur_4en1_temperature
+                name: Température
+                icon: mdi:thermometer
+              - entity: sensor.capteur_4en1_humidite_air
+                name: Humidité air
+                icon: mdi:water-percent
+              - entity: sensor.capteur_4en1_humidite_sol
+                name: Humidité sol
+                icon: mdi:water
+              - entity: sensor.capteur_4en1_luminosite
+                name: Luminosité
+                icon: mdi:brightness-6
+              - entity: sensor.vpd
+                name: VPD (Vapor Pressure Deficit)
+                icon: mdi:cloud-percent
+              - type: divider
+              - entity: sensor.etat_sante_plante
+                name: État de santé
+                icon: mdi:heart-pulse
+              - entity: binary_sensor.besoin_arrosage
+                name: Besoin d'arrosage
+
+      # Graphiques température
+      - type: vertical-stack
+        cards:
+          - type: history-graph
+            title: 🌡️ Température (24h)
+            hours_to_show: 24
+            refresh_interval: 60
+            entities:
+              - entity: sensor.capteur_4en1_temperature
+                name: Température
+
+          - type: markdown
+            content: |
+              **Plages optimales par phase:**
+              - 🌱 Germination/Plantule: 22-26°C jour / 18-20°C nuit
+              - 🌿 Végétation: 23-25°C jour / 18-22°C nuit
+              - 🌸 Floraison: 25°C jour / 18-20°C nuit
+              - 💧 Rinçage: 25°C jour / 18-20°C nuit
+
+      # Graphiques humidité air
+      - type: vertical-stack
+        cards:
+          - type: history-graph
+            title: 💧 Humidité air (24h)
+            hours_to_show: 24
+            refresh_interval: 60
+            entities:
+              - entity: sensor.capteur_4en1_humidite_air
+                name: Humidité air
+
+          - type: markdown
+            content: |
+              **Plages optimales par phase:**
+              - 🌱 Germination: 70-80%
+              - 🌿 Plantule: 55-65%
+              - 🌿 Végétation: 45-55%
+              - 🌸 **Floraison: 38-45% MAX** (moisissure!)
+              - 💧 Rinçage: 35-40%
+
+      # Graphiques humidité sol
+      - type: vertical-stack
+        cards:
+          - type: history-graph
+            title: 🏜️ Humidité sol (7 jours)
+            hours_to_show: 168
+            refresh_interval: 300
+            entities:
+              - entity: sensor.capteur_4en1_humidite_sol
+                name: Humidité sol
+              - entity: sensor.seuil_humidite_actif
+                name: Seuil actif
+
+          - type: markdown
+            content: |
+              **Seuils d'arrosage par phase:**
+              - 🌱 Germination: 75% (substrat humide constant)
+              - 🌿 Plantule: 70%
+              - 🌿 Végétation: 50%
+              - 🌸 Floraison: 40%
+              - 💧 Rinçage: 55%
+
+      # Graphique luminosité
+      - type: history-graph
+        title: 💡 Luminosité (24h)
+        hours_to_show: 24
+        refresh_interval: 60
+        entities:
+          - entity: sensor.capteur_4en1_luminosite
+            name: Luminosité
+
+      # Graphique VPD
+      - type: vertical-stack
+        cards:
+          - type: history-graph
+            title: 🌫️ VPD - Vapor Pressure Deficit (24h)
+            hours_to_show: 24
+            refresh_interval: 60
+            entities:
+              - entity: sensor.vpd
+                name: VPD
+
+          - type: markdown
+            content: |
+              **VPD optimal:**
+              - 🌿 Végétation: 0.8-1.0 kPa
+              - 🌸 Floraison: 1.0-1.2 kPa
+
+              Trop bas (<0.4): risque moisissure
+              Trop haut (>1.5): stress hydrique
+
+  # ==========================================================================
+  # VUE 2: ARROSAGE
+  # ==========================================================================
+  - title: Arrosage
+    path: watering
+    icon: mdi:water-pump
+    badges: []
+    cards:
+
+      # Configuration arrosage
+      - type: entities
+        title: ⚙️ Configuration arrosage
+        show_header_toggle: false
+        entities:
+          - entity: input_select.grow_phase
+            name: Phase de culture
+          - entity: input_datetime.grow_start_date
+            name: Date de germination
+          - type: divider
+          - entity: sensor.jour_de_culture
+            name: Jour de culture
+          - entity: sensor.semaine_de_culture
+            name: Semaine
+          - type: divider
+          - entity: input_boolean.auto_watering_enabled
+            name: Arrosage automatique
+          - entity: sensor.seuil_humidite_actif
+            name: Seuil actif (phase actuelle)
+          - entity: sensor.duree_arrosage_active
+            name: Durée active (phase actuelle)
+          - entity: sensor.volume_arrosage_estime
+            name: Volume estimé par arrosage
+
+      # Stats arrosage
+      - type: entities
+        title: 📊 Statistiques arrosage
+        show_header_toggle: false
+        entities:
+          - entity: counter.watering_count
+            name: Nombre d'arrosages total
+          - entity: binary_sensor.besoin_arrosage
+            name: Besoin d'arrosage actuellement
+          - entity: sensor.capteur_4en1_humidite_sol
+            name: Humidité sol actuelle
+
+      # Contrôle manuel
+      - type: entities
+        title: 🎮 Contrôle manuel
+        show_header_toggle: false
+        entities:
+          - entity: switch.smart_drip_irrigation
+            name: Smart Drip (manuel)
+          - type: divider
+          - entity: binary_sensor.smart_drip_alarme_eau
+            name: Alarme réservoir vide
+          - entity: binary_sensor.smart_drip_alarme_obstruction
+            name: Alarme obstruction
+
+      # Seuils par phase
+      - type: entities
+        title: 🎚️ Seuils humidité par phase
+        show_header_toggle: false
+        entities:
+          - entity: input_number.humidity_threshold_germination
+          - entity: input_number.humidity_threshold_plantule
+          - entity: input_number.humidity_threshold_vegetation
+          - entity: input_number.humidity_threshold_floraison
+          - entity: input_number.humidity_threshold_rincage
+          - entity: input_number.soil_humidity_critical
+            name: Seuil critique (alerte)
+
+      # Durées par phase
+      - type: entities
+        title: ⏱️ Durées arrosage par phase
+        show_header_toggle: false
+        entities:
+          - entity: input_number.watering_duration_germination
+          - entity: input_number.watering_duration_plantule
+          - entity: input_number.watering_duration_vegetation
+          - entity: input_number.watering_duration_floraison
+          - entity: input_number.watering_duration_rincage
+          - type: divider
+          - entity: input_number.dripper_flow_rate
+            name: Débit goutteurs (4x)
+
+      # Recette engrais
+      - type: markdown
+        title: 🧪 Recette engrais active
+        content: |
+          **Phase:** {{ states('input_select.grow_phase') }}
+          **Semaine:** {{ states('sensor.semaine_de_culture') }}
+
+          ---
+
+          ### 📋 Recette:
+          **{{ states('input_text.fertilizer_recipe') }}**
+
+          ---
+
+          ### 🧪 Tableau récapitulatif engrais:
+
+          | Semaine | Root Juice | Bio Grow | Bio Bloom | Notes |
+          |---------|-----------|----------|-----------|-------|
+          | 1 | - | - | - | Eau claire |
+          | 2 | 1ml/L | - | - | Début engrais |
+          | 3-4 | 2ml/L | 1-2ml/L | - | Végétation |
+          | 5-6 | - | 2ml/L | 2ml/L | Début flo |
+          | 7-8 | - | 3ml/L | 3ml/L | Pleine flo |
+          | 9-11 | - | - | - | RINÇAGE - Eau claire! |
+
+          **pH = 6.5 TOUJOURS!** Prépare ton eau la veille.
+
+      # Historique arrosages
+      - type: history-graph
+        title: 💦 Historique arrosages (7 jours)
+        hours_to_show: 168
+        refresh_interval: 300
+        entities:
+          - entity: switch.smart_drip_irrigation
+            name: Pompe arrosage
+
+  # ==========================================================================
+  # VUE 3: ÉQUIPEMENTS
+  # ==========================================================================
+  - title: Équipements
+    path: equipment
+    icon: mdi:devices
+    badges: []
+    cards:
+
+      # Contrôle équipements
+      - type: entities
+        title: 🔌 Contrôle équipements
+        show_header_toggle: false
+        entities:
+          - entity: switch.prise_mars_hydro
+            name: Mars Hydro TS-1000
+            icon: mdi:lightbulb-on
+          - entity: switch.prise_extraction
+            name: Extracteur + Filtre charbon
+            icon: mdi:fan
+          - entity: switch.smart_drip_irrigation
+            name: Smart Drip (pompe)
+            icon: mdi:water-pump
+
+      # État capteurs
+      - type: entities
+        title: 📡 Capteurs
+        show_header_toggle: false
+        entities:
+          - entity: sensor.capteur_4en1_temperature
+            name: Capteur température
+          - entity: sensor.capteur_4en1_humidite_air
+            name: Capteur humidité air
+          - entity: sensor.capteur_4en1_humidite_sol
+            name: Capteur humidité sol
+          - entity: sensor.capteur_4en1_luminosite
+            name: Capteur luminosité
+
+      # Alarmes Smart Drip
+      - type: entities
+        title: 🚨 Alarmes Smart Drip
+        show_header_toggle: false
+        entities:
+          - entity: binary_sensor.smart_drip_alarme_eau
+            name: Alarme réservoir vide
+          - entity: binary_sensor.smart_drip_alarme_obstruction
+            name: Alarme obstruction goutteurs
+
+      # Historique équipements
+      - type: history-graph
+        title: 📊 Historique équipements (24h)
+        hours_to_show: 24
+        refresh_interval: 60
+        entities:
+          - entity: switch.prise_mars_hydro
+            name: Mars Hydro
+          - entity: switch.prise_extraction
+            name: Extraction
+          - entity: switch.smart_drip_irrigation
+            name: Smart Drip
+
+      # Info Mars Hydro
+      - type: markdown
+        title: 💡 Réglages Mars Hydro TS600
+        content: |
+          **Réglages hauteur selon phase:**
+
+          | Phase | Semaines | Hauteur | Cycle |
+          |-------|----------|---------|-------|
+          | 🌱 Semis/Plantule | 1-2 | 50-60 cm | 18h/6h ou 20h/4h |
+          | 🌿 Végétation | 3-4 | 40-50 cm | 18h/6h ou 20h/4h |
+          | 🌸 Floraison | 5-8 | 30-40 cm | 18h/6h ou 20h/4h |
+          | 💧 Rinçage | 9-11 | 30-35 cm | 18h/6h ou 20h/4h |
+
+          **La TS600 n'a PAS de dimmer** - ajuste uniquement la HAUTEUR.
+
+          Tu peux rester en 18/6h, ça marche aussi!
+
+  # ==========================================================================
+  # VUE 4: CONFIGURATION
+  # ==========================================================================
+  - title: Configuration
+    path: config
+    icon: mdi:cog
+    badges: []
+    cards:
+
+      # Phase et dates
+      - type: entities
+        title: 🌱 Phase de culture
+        show_header_toggle: false
+        entities:
+          - entity: input_select.grow_phase
+          - entity: input_datetime.grow_start_date
+          - type: divider
+          - entity: sensor.jour_de_culture
+          - entity: sensor.semaine_de_culture
+
+      # Seuils température
+      - type: entities
+        title: 🌡️ Seuils température
+        show_header_toggle: false
+        entities:
+          - entity: input_number.temperature_min
+          - entity: input_number.temperature_max
+          - type: divider
+          - entity: sensor.capteur_4en1_temperature
+            name: Température actuelle
+
+      # Seuils humidité air
+      - type: entities
+        title: 💧 Seuils humidité air
+        show_header_toggle: false
+        entities:
+          - entity: input_number.air_humidity_max
+          - type: divider
+          - entity: sensor.capteur_4en1_humidite_air
+            name: Humidité air actuelle
+
+      # Seuils humidité sol
+      - type: entities
+        title: 🏜️ Seuils humidité sol
+        show_header_toggle: false
+        entities:
+          - entity: input_number.humidity_threshold_germination
+          - entity: input_number.humidity_threshold_plantule
+          - entity: input_number.humidity_threshold_vegetation
+          - entity: input_number.humidity_threshold_floraison
+          - entity: input_number.humidity_threshold_rincage
+          - type: divider
+          - entity: input_number.soil_humidity_critical
+          - type: divider
+          - entity: sensor.seuil_humidite_actif
+            name: Seuil actif (phase)
+          - entity: sensor.capteur_4en1_humidite_sol
+            name: Humidité sol actuelle
+
+      # Durées arrosage
+      - type: entities
+        title: ⏱️ Durées arrosage
+        show_header_toggle: false
+        entities:
+          - entity: input_number.watering_duration_germination
+          - entity: input_number.watering_duration_plantule
+          - entity: input_number.watering_duration_vegetation
+          - entity: input_number.watering_duration_floraison
+          - entity: input_number.watering_duration_rincage
+          - type: divider
+          - entity: input_number.dripper_flow_rate
+          - type: divider
+          - entity: sensor.duree_arrosage_active
+            name: Durée active (phase)
+          - entity: sensor.volume_arrosage_estime
+            name: Volume estimé
+
+      # Activation/Désactivation
+      - type: entities
+        title: 🔔 Activation fonctionnalités
+        show_header_toggle: false
+        entities:
+          - entity: input_boolean.auto_watering_enabled
+          - entity: input_boolean.alerts_enabled
+
+      # Compteurs et stats
+      - type: entities
+        title: 📊 Compteurs
+        show_header_toggle: false
+        entities:
+          - entity: counter.watering_count
+          - type: button
+            name: Réinitialiser compteur arrosages
+            action_name: Reset
+            tap_action:
+              action: call-service
+              service: counter.reset
+              service_data:
+                entity_id: counter.watering_count
+
+  # ==========================================================================
+  # VUE 5: GUIDE DE CULTURE
+  # ==========================================================================
+  - title: Guide
+    path: guide
+    icon: mdi:book-open-variant
+    badges: []
+    cards:
+
+      - type: markdown
+        title: 📚 Guide complet de culture
+        content: |
+          # 🌱 GUIDE DE CULTURE
+          ## Watermelon Automatic - Royal Queen Seeds
+
+          ---
+
+          ## 📊 INFORMATIONS GÉNÉTIQUES
+
+          - **Génétique:** Tropicanna Cookies x Lemon OG
+          - **Type:** 75% Indica / 20% Sativa / 5% Ruderalis
+          - **THC:** 20%
+          - **CBD:** Moyen
+          - **Cycle total:** 10-12 semaines (avec rinçage)
+          - **Floraison:** 6-7 semaines
+          - **Hauteur indoor:** 80-110 cm
+          - **Rendement indoor:** 450-500 g/m² (50-80g/plant réaliste)
+          - **Effet:** Relaxant, calming, euphorique
+          - **Goût:** Pastèque, fruité, tropical
+
+          ---
+
+          ## 🌱 PHASE 1: Semis (Semaine 1)
+
+          **Température:** 22-26°C
+          **Humidité air:** 70-80%
+          **Lumière:** TS600 à 50-60cm, 18-24h/jour
+          **Arrosage:** Substrat humide, pas trempé
+          **Engrais:** Aucun
+          **Hauteur attendue:** ~5 cm en fin de semaine
+
+          ---
+
+          ## 🌿 PHASE 2: Plantule (Semaine 2)
+
+          **Température:** 22-25°C jour / 18-20°C nuit
+          **Humidité air:** 55-65%
+          **Lumière:** TS600 à 50cm, 18-24h/jour
+          **Arrosage:** 100ml tous les 2-3 jours, autour de la tige
+          **Engrais:** Root Juice 1ml/L (dans le grow report 4ml/L)
+          **Hauteur attendue:** ~10 cm en fin de semaine
+
+          ---
+
+          ## 🌿 PHASE 3: Végétation (Semaines 3-4)
+
+          **Température:** 23-25°C jour / 18-22°C nuit
+          **Humidité air:** 45-55%
+          **Lumière:** TS600 à 40-45cm, 18-24h/jour
+          **Arrosage:** 500ml-1L tous les 2 jours
+          **Engrais:** Root Juice 2ml/L + Bio Grow 1-2ml/L
+          **Hauteur attendue:** 20-30 cm, pistils apparaissent fin sem. 4
+
+          ℹ️ **C'est le moment idéal pour le LST si tu veux!** La plante double de taille cette semaine.
+
+          ---
+
+          ## 🌸 PHASE 4: Floraison (Semaines 5-8)
+
+          **Température:** 25°C jour / 18-20°C nuit
+          **Humidité air:** 38-45% MAX
+          **Lumière:** TS600 à 30-40cm, 18-20h/jour
+          **Arrosage:** 1-2L tous les 2 jours
+
+          **Engrais Sem 5-6:** Bio Grow 2ml/L + Bio Bloom 2ml/L
+          **Engrais Sem 7-8:** Bio Grow 3ml/L + Bio Bloom 3ml/L
+
+          **Hauteur attendue:** 60-80 cm, têtes gonflent, arômes forts
+
+          ⚠️ **STOP le Root Juice! Humidité MAX 45%! Extracteur + filtre charbon OBLIGATOIRES!**
+
+          ---
+
+          ## 💧 PHASE 5: Rinçage (Semaines 9-11)
+
+          Le rinçage dure 2-3 semaines. La plante utilise ses réserves = fumée plus douce.
+
+          **Température:** 25°C jour / 18-20°C nuit
+          **Humidité air:** 35-40%
+          **Lumière:** TS600 à 30-35cm, 18-20h/jour
+          **Arrosage:** 2L tous les 2 jours
+          **Engrais:** AUCUN — EAU CLAIRE UNIQUEMENT!
+
+          **Ce qui se passe:** Feuilles jaunissent = NORMAL, c'est le signe que ça marche
+
+          ---
+
+          ## 🔍 RÉCOLTE (Semaine 12)
+
+          ### Quand récolter? Observe les trichomes avec une loupe:
+
+          | Trichomes | État | Effet |
+          |-----------|------|-------|
+          | Transparents | Trop tôt | Pas prêt |
+          | Laiteux/blancs | Bon | High énergique |
+          | **70% laiteux + 30% ambrés** | **PARFAIT** | **High équilibré (recommandé)** |
+          | Majoritairement ambrés | Tard | Effet sédatif, couch-lock |
+
+          ---
+
+          ## 🌿 SÉCHAGE
+
+          - Coupe la plante à la base
+          - Suspends tête en bas dans un endroit SOMBRE
+          - Laisse le ventilateur tourner, éteins les lampes
+          - **Conditions:** 18-22°C, 50-60% humidité
+          - **Durée:** 10-14 jours (les petites branches doivent CASSER, pas plier)
+
+          ---
+
+          ## 🏺 AFFINAGE (CURING)
+
+          - Mets les buds manucurés dans des pots en verre (Mason jars)
+          - **Semaine 1:** ouvre les pots 2x par jour pendant 10-15 min (burping)
+          - **Semaines 2-4:** ouvre 1x par jour
+          - **Minimum:** 2 semaines, **idéalement:** 4-8 semaines
+
+          ℹ️ **Le curing améliore énormément le goût et la puissance!**
+
+          ---
+
+          ## ⚠️ ERREURS À ÉVITER
+
+          | Erreur | Conséquence | Solution |
+          |--------|-------------|----------|
+          | Trop arroser | Racines noyées, mort | Attends que le pot soit LÉGER |
+          | Oublier le pH | Nutriments bloqués | pH 6.5 À CHAQUE ARROSAGE |
+          | Trop d'engrais | Brûlure des feuilles | Commence doucement |
+          | Humidité haute en flo | Moisissure buds | Max 45%, extracteur! |
+          | Pas de rinçage | Goût chimique | 2-3 semaines eau claire |
+          | Récolter trop tôt | Pas de puissance | Vérifie les trichomes! |
+
+          ---
+
+          ## 💡 CONSEILS PRO
+
+          - **SOULÈVE TON POT** pour savoir quand arroser — pot léger = arrose!
+          - Feuilles qui tombent légèrement = besoin d'eau
+          - Feuilles jaunes du BAS en floraison = NORMAL
+          - Le grow report a obtenu 56g sur 1 plant — c'est un objectif réaliste!
+          - Défolie les feuilles malades pour améliorer l'aération
+          - Les couleurs violettes apparaissent naturellement sur cette variété!
+
+          ---
+
+          ## 📊 BONNE CULTURE!
+
+          | Paramètre | Valeur |
+          |-----------|--------|
+          | **Durée totale** | 10-12 semaines |
+          | **Rendement réaliste** | 50-80g par plant |
+          | **THC** | 20% |
+          | **Effet** | Relaxant, yeux rouges, appétit |
+
+          ---
+
+          ## 🧪 TABLEAU ENGRAIS RÉCAPITULATIF
+
+          | SEMAINE | ROOT JUICE | BIO GROW | BIO BLOOM | NOTES |
+          |---------|-----------|----------|-----------|-------|
+          | 1 | - | - | - | Eau claire |
+          | 2 | 1ml/L | 0.5ml/L | - | Début engrais |
+          | 3-4 | 2ml/L | 1-2ml/L | - | Végétation |
+          | 5-6 | - | 2ml/L | 2ml/L | Début flo |
+          | 7-8 | - | 3ml/L | 3ml/L | Pleine flo |
+          | 9-11 | - | - | - | RINÇAGE - Eau claire! |
+
+          **pH = 6.5 TOUJOURS!** Prépare ton eau la veille.
+
+          ---
+
+          Bonne culture! 🌱
